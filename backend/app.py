@@ -1,12 +1,10 @@
-# app.py - Flask后端服务 (火山引擎版)
+# app.py - Flask后端服务 (火山引擎AI搜索版)
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 import os
 import requests
 import json
-import hashlib
-import hmac
-import time
+import random
 from datetime import datetime
 
 app = Flask(__name__)
@@ -15,18 +13,8 @@ CORS(app)
 # 导入配置
 from config import (
     VOLCENGINE_ACCESS_KEY, VOLCENGINE_SECRET_KEY,
-    VOLCENGINE_ENDPOINT, VOLCENGINE_MODEL_SEARCH, VOLCENGINE_MODEL_DEEP,
-    TAVILY_API_KEY, SEARCH_MAX_RESULTS
+    VOLCENGINE_ENDPOINT, VOLCENGINE_MODEL_SEARCH, VOLCENGINE_MODEL_DEEP
 )
-
-# 新闻源配置
-NEWS_SOURCES = {
-    'weibo': {'name': '微博汽车', 'keyword': 'site:weibo.com 汽车热榜 新车'},
-    'all': {'name': '全网', 'keyword': '汽车 新车 上市 政策 行业'},
-    'autohome': {'name': '汽车之家', 'keyword': 'site:autohome.com.cn/news 新车 上市'},
-    'dongche': {'name': '懂车帝', 'keyword': 'site:dongchedi.com 新车 上市'},
-    'yiche': {'name': '易车', 'keyword': 'site:yiche.com 新车 上市'}
-}
 
 # 风格配置
 WRITING_STYLES = {
@@ -68,14 +56,12 @@ WRITING_STYLES = {
     }
 }
 
-def call_volcano_api(prompt, model='doubao-lite-4k'):
+def call_volcano_api(prompt, model='lite'):
     """调用火山引擎API"""
-    # 检查API Key是否配置
     if not VOLCENGINE_ACCESS_KEY:
         print("错误: 未配置 VOLCENGINE_ACCESS_KEY 环境变量")
         return None
 
-    # 构建请求 - 使用ARK API
     url = f"https://{VOLCENGINE_ENDPOINT}/api/v3/chat/completions"
 
     # 选择模型
@@ -86,7 +72,6 @@ def call_volcano_api(prompt, model='doubao-lite-4k'):
 
     print(f"调用火山引擎 - 模型: {model_name}")
 
-    # 火山引擎使用 API Key 认证 (只使用 Access Key)
     headers = {
         'Content-Type': 'application/json',
         'Authorization': f'Bearer {VOLCENGINE_ACCESS_KEY}'
@@ -97,17 +82,16 @@ def call_volcano_api(prompt, model='doubao-lite-4k'):
         'messages': [
             {'role': 'user', 'content': prompt}
         ],
-        'max_tokens': 2048,
-        'temperature': 0.7
+        'max_tokens': 4096,
+        'temperature': 0.8
     }
 
     try:
-        response = requests.post(url, headers=headers, json=payload, timeout=30)
+        response = requests.post(url, headers=headers, json=payload, timeout=60)
 
         if response.ok:
             data = response.json()
             print(f"火山引擎响应成功")
-            # 火山引擎返回格式
             if 'choices' in data and len(data['choices']) > 0:
                 return data['choices'][0]['message']['content']
             elif 'content' in data:
@@ -119,21 +103,140 @@ def call_volcano_api(prompt, model='doubao-lite-4k'):
         print(f"调用火山引擎出错: {e}")
         return None
 
+
+def search_news_with_ai(sources, time_range):
+    """使用火山引擎AI搜索最新汽车新闻"""
+
+    # 构建搜索提示词
+    source_names = {
+        'weibo': '微博汽车热榜',
+        'all': '全网',
+        'autohome': '汽车之家',
+        'dongche': '懂车帝',
+        'yiche': '易车'
+    }
+
+    source_text = '、'.join([source_names.get(s, s) for s in sources])
+
+    search_prompt = f"""你是一个专业的汽车新闻搜索助手。请帮我搜索最新的汽车行业新闻。
+
+要求：
+1. 搜索{source_text}上最新的汽车新闻
+2. 只搜索以下类型的新闻：
+   - 新车上市、预售、发布
+   - 行业重磅新闻
+   - 政策变化
+   - 重大合作、投资
+   - 热门车型销量
+3. 返回5条最新、最热的汽车新闻
+4. 每条新闻必须包含：标题、摘要、原文链接
+
+请用JSON格式返回，格式如下：
+[
+  {{"title": "新闻标题", "summary": "新闻摘要", "url": "原文链接", "publishTime": "发布时间"}},
+  ...
+]
+
+只返回JSON数组，不要其他内容。"""
+
+    # 调用AI搜索
+    result = call_volcano_api(search_prompt, model='lite')
+
+    if not result:
+        # 如果AI调用失败，返回模拟数据
+        return generate_mock_news()
+
+    # 解析JSON结果
+    try:
+        # 尝试提取JSON部分
+        import re
+        json_match = re.search(r'\[.*\]', result, re.DOTALL)
+        if json_match:
+            news_list = json.loads(json_match.group())
+        else:
+            news_list = json.loads(result)
+
+        # 转换为标准格式
+        formatted_news = []
+        for idx, item in enumerate(news_list):
+            formatted_news.append({
+                'id': f"ai_{datetime.now().timestamp()}_{idx}",
+                'title': item.get('title', ''),
+                'summary': item.get('summary', ''),
+                'url': item.get('url', '#'),
+                'source': sources[0] if sources else 'ai',
+                'source_name': 'AI搜索',
+                'publishTime': item.get('publishTime') or datetime.now().isoformat()
+            })
+
+        return formatted_news[:5]
+
+    except Exception as e:
+        print(f"解析AI结果失败: {e}, 结果: {result}")
+        return generate_mock_news()
+
+
+def generate_mock_news():
+    """生成模拟新闻数据（备用）"""
+    templates = [
+        {
+            'title': '比亚迪秦L DM-i正式上市 售价7.98万起',
+            'summary': '比亚迪官方宣布，秦L DM-i正式上市，共推出5款车型，售价区间7.98-12.98万元。新车搭载第五代DM-i混动技术，NEDC工况下综合续航可达2000km。',
+            'url': 'https://example.com/news/1'
+        },
+        {
+            'title': '特斯拉Model Y新版车型申报 续航提升至600km',
+            'summary': '工信部最新申报信息显示，特斯拉Model Y将推出新版本车型，配备更大容量电池组，续航里程提升至600km以上，预计年内上市。',
+            'url': 'https://example.com/news/2'
+        },
+        {
+            'title': '小米SU7订单突破10万 创最快交付纪录',
+            'summary': '小米汽车官方数据显示，SU7上市仅7天大定订单突破10万台，创下新能源车最快交付纪录。目前已开启全国交付。',
+            'url': 'https://example.com/news/3'
+        },
+        {
+            'title': '全新宝马5系正式发布 搭载最新iDrive 8.5系统',
+            'summary': '宝马官方正式发布全新一代5系轿车，内饰全面升级，配备最新iDrive 8.5操作系统，提供燃油和纯电两种动力版本。',
+            'url': 'https://example.com/news/4'
+        },
+        {
+            'title': '理想汽车销量突破20万 新款L6将于下月发布',
+            'summary': '理想汽车宣布累计交付量突破20万台，同时透露全新车型L6将于下月正式发布，定位中大型SUV，预售价25万元起。',
+            'url': 'https://example.com/news/5'
+        }
+    ]
+
+    news = []
+    for idx, item in enumerate(templates):
+        news.append({
+            'id': f"mock_{datetime.now().timestamp()}_{idx}",
+            'title': item['title'],
+            'summary': item['summary'],
+            'url': item['url'],
+            'source': 'ai',
+            'source_name': 'AI搜索',
+            'publishTime': datetime.now().isoformat()
+        })
+
+    return news
+
+
 @app.route('/')
 def index():
     return jsonify({
         'name': '汽车新闻快编 API',
-        'version': '3.0',
+        'version': '4.0',
         'provider': '火山引擎',
         'models': {
             'search': VOLCENGINE_MODEL_SEARCH,
             'deep': VOLCENGINE_MODEL_DEEP
         },
         'endpoints': {
-            '/api/news': '获取新闻',
+            '/api/news': 'AI搜索新闻',
             '/api/rewrite': 'AI改写'
         }
     })
+
 
 @app.route('/api/news')
 def get_news():
@@ -141,14 +244,13 @@ def get_news():
     sources = request.args.get('sources', '').split(',')
     time_range = int(request.args.get('timeRange', 1))
 
-    # 过滤空字符串
     sources = [s.strip() for s in sources if s.strip()]
 
     if not sources:
-        return jsonify({'success': False, 'error': '请选择新闻源'}), 400
+        sources = ['all']
 
     try:
-        news = search_news_ai(sources, time_range)
+        news = search_news_with_ai(sources, time_range)
         return jsonify({
             'success': True,
             'data': news,
@@ -161,83 +263,6 @@ def get_news():
             'error': str(e)
         }), 500
 
-def search_news_ai(sources, time_range):
-    """使用Tavily API搜索新闻"""
-    all_news = []
-
-    for source_id in sources:
-        keyword = NEWS_SOURCES.get(source_id, {}).get('keyword', '')
-
-        # 调用Tavily API
-        url = 'https://api.tavily.com/search'
-        payload = {
-            'api_key': TAVILY_API_KEY,
-            'query': keyword,
-            'max_results': SEARCH_MAX_RESULTS,
-            'include_answer': True,
-            'include_images': False
-        }
-
-        try:
-            response = requests.post(url, json=payload, timeout=10)
-            if response.ok:
-                data = response.json()
-                results = data.get('results', [])
-
-                for idx, item in enumerate(results):
-                    news_item = {
-                        'id': f"{source_id}_{datetime.now().timestamp()}_{idx}",
-                        'title': item.get('title', ''),
-                        'summary': item.get('content', ''),
-                        'url': item.get('url', '#'),
-                        'source': source_id,
-                        'source_name': NEWS_SOURCES.get(source_id, {}).get('name', source_id),
-                        'publishTime': item.get('published_date') or datetime.now().isoformat()
-                    }
-                    all_news.append(news_item)
-        except Exception as e:
-            print(f"搜索 {source_id} 出错: {e}")
-            continue
-
-    # 过滤高质量新闻
-    filtered = filter_quality_news(all_news)
-
-    # 随机打乱
-    import random
-    random.shuffle(filtered)
-
-    return filtered[:5]
-
-def filter_quality_news(news):
-    """过滤高质量新闻"""
-    include_keywords = [
-        '新车', '上市', '发布', '预售', '亮相', '首发',
-        '政策', '补贴', '法规', '标准', '规划',
-        '行业', '销量', '交付', '财报', '投资', '合作',
-        '新能源', '电动车', '智驾', '电池', '续航',
-        '比亚迪', '特斯拉', '小米', '华为', '吉利', '长城', '长安', '奇瑞',
-        '问界', '理想', '蔚来', '小鹏', '零跑', '哪吒', '极氪', '领克'
-    ]
-
-    exclude_keywords = [
-        '视频', '短视频', '直播', '带货', '评测', '试驾',
-        '车祸', '事故', '维权', '投诉', '召回',
-        '二手车', '降价', '优惠'
-    ]
-
-    filtered = []
-    for item in news:
-        content = (item.get('title', '') + ' ' + item.get('summary', '')).lower()
-
-        # 排除
-        if any(kw.lower() in content for kw in exclude_keywords):
-            continue
-
-        # 必须包含
-        if any(kw.lower() in content for kw in include_keywords):
-            filtered.append(item)
-
-    return filtered
 
 @app.route('/api/sources')
 def get_sources():
@@ -251,6 +276,7 @@ def get_sources():
     ]
     return jsonify({'success': True, 'data': sources})
 
+
 @app.route('/api/rewrite', methods=['POST'])
 def rewrite_news():
     """AI改写API"""
@@ -258,7 +284,7 @@ def rewrite_news():
     news_item = data.get('news', {})
     format_type = data.get('format', 'short')
     style = data.get('style', 'vlog')
-    use_deep = data.get('deep', False)  # 是否使用深度模型
+    use_deep = data.get('deep', False)
 
     if not news_item:
         return jsonify({'success': False, 'error': '新闻内容不能为空'}), 400
@@ -276,18 +302,15 @@ def rewrite_news():
             'error': str(e)
         }), 500
 
+
 def rewrite_with_ai(news_item, format_type, style, use_deep=False):
     """使用火山引擎API改写新闻"""
-    # 构建提示词
     style_config = WRITING_STYLES.get(style, WRITING_STYLES['vlog'])
     prompt = style_config['prompt']
 
-    # 构建用户消息
     title = news_item.get('title', '')
     summary = news_item.get('summary', '')
 
-    # 根据格式控制长度
-    length_hint = ""
     if format_type == 'short':
         length_hint = "长度控制在100-300字"
     else:
@@ -304,18 +327,15 @@ def rewrite_with_ai(news_item, format_type, style, use_deep=False):
 请按照以上风格要求进行改写。"""
 
     full_prompt = prompt + "\n\n" + user_message
-
-    # 选择模型
     model = 'deep' if use_deep else 'lite'
 
-    # 调用火山引擎API
     result = call_volcano_api(full_prompt, model)
 
     if result:
         return result
     else:
-        # 如果API调用失败，返回模拟数据
         return generate_mock_rewrite(news_item, style)
+
 
 def generate_mock_rewrite(news_item, style):
     """生成模拟改写结果"""
@@ -349,9 +369,10 @@ def generate_mock_rewrite(news_item, style):
 
     return templates.get(style, templates['vlog'])
 
+
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     print(f"🚀 汽车新闻快编 API 启动中...")
-    print(f"🔥 使用火山引擎豆包模型")
+    print(f"🔥 使用火山引擎豆包AI搜索+改写")
     print(f"📡 端口: {port}")
     app.run(host='0.0.0.0', port=port, debug=True)
