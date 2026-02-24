@@ -1,5 +1,8 @@
 // fetcher.js - 新闻抓取模块
 
+// 后端API地址
+const API_BASE = '';
+
 class NewsFetcher {
   constructor() {
     this.selectedSources = new Set();
@@ -32,7 +35,7 @@ class NewsFetcher {
     this.selectedSources = new Set(sourceIds);
   }
 
-  // 获取新闻
+  // 获取新闻 - 调用后端API
   async fetchNews(timeRange = 1) {
     if (this.selectedSources.size === 0) {
       throw new Error('请至少选择一个新闻源');
@@ -40,17 +43,36 @@ class NewsFetcher {
 
     const selectedSources = this.getSelectedSources();
 
-    // 模拟新闻数据（实际应用中需要从后端API获取）
-    const mockNews = this.generateMockNews(selectedSources, timeRange);
+    try {
+      // 调用后端API
+      const url = `${API_BASE}/api/news?sources=${selectedSources.join(',')}&hours=${timeRange * 24}`;
+      const response = await fetch(url);
 
-    // 按时间排序
-    mockNews.sort((a, b) => new Date(b.publishTime) - new Date(a.publishTime));
+      if (!response.ok) {
+        throw new Error('网络请求失败');
+      }
 
-    this.newsData = mockNews;
-    return mockNews;
+      const result = await response.json();
+
+      if (!result.success) {
+        throw new Error(result.error || '获取新闻失败');
+      }
+
+      this.newsData = result.data;
+      return result.data;
+
+    } catch (error) {
+      console.error('获取新闻失败:', error);
+      // 如果后端调用失败，使用模拟数据
+      console.log('使用模拟数据...');
+      const mockNews = this.generateMockNews(selectedSources, timeRange);
+      mockNews.sort((a, b) => new Date(b.publishTime) - new Date(a.publishTime));
+      this.newsData = mockNews;
+      return mockNews;
+    }
   }
 
-  // 生成模拟新闻数据
+  // 生成模拟新闻数据（备用）
   generateMockNews(sourceIds, timeRange) {
     const now = new Date();
     const newsTemplates = [
@@ -103,24 +125,21 @@ class NewsFetcher {
         title: '吉利银河E8正式上市 搭载45英寸8K大屏',
         summary: '吉利银河E8正式上市，售价17.58-22.88万元。新车最大亮点是配备45英寸8K分辨率中控屏，搭载高通8295芯片。',
         source: 'sina'
-      },
-      {
-        title: '方程豹豹5销量破万 硬派越野市场再掀波澜',
-        summary: '方程豹官方宣布，豹5上市首月销量突破1万台。凭借DMO超级混动越野平台，成为硬派越野市场新宠。',
-        source: 'autohome'
-      },
-      {
-        title: '小鹏X9正式发布 定位纯电智能MPV',
-        summary: '小鹏汽车正式发布X9，定位纯电智能MPV，配备后轮转向、空气悬架等配置，预售价38.8万元起。',
-        source: 'yiche'
       }
     ];
 
+    const sourceNames = {
+      autohome: '汽车之家',
+      yiche: '易车',
+      dongche: '懂车帝',
+      pcauto: '太平洋汽车',
+      sina: '新浪汽车'
+    };
+
     const news = [];
     sourceIds.forEach(sourceId => {
-      // 每个源随机取2-4条新闻
       const count = Math.floor(Math.random() * 3) + 2;
-      const shuffled = [...newsTemplates].filter(n => n.source === sourceId || Math.random() > 0.5);
+      const shuffled = newsTemplates.filter(n => n.source === sourceId || Math.random() > 0.5);
 
       for (let i = 0; i < Math.min(count, shuffled.length); i++) {
         const template = shuffled[i];
@@ -131,6 +150,7 @@ class NewsFetcher {
           title: template.title,
           summary: template.summary,
           source: sourceId,
+          source_name: sourceNames[sourceId] || sourceId,
           publishTime: new Date(now.getTime() - hoursAgo * 60 * 60 * 1000).toISOString(),
           url: '#'
         });
