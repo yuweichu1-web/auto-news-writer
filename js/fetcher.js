@@ -135,12 +135,28 @@ class NewsFetcher {
 
   // 获取日期过滤字符串
   getDateFilter(timeRange) {
-    const days = {
-      1: '今天',
-      3: '近3天内',
-      7: '近7天内'
-    };
-    return days[timeRange] || '今天';
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const today = `${year}-${month}-${day}`;
+
+    if (timeRange === 1) {
+      return `after:${today}`; // 今天
+    } else if (timeRange === 3) {
+      const threeDaysAgo = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000);
+      const y = threeDaysAgo.getFullYear();
+      const m = String(threeDaysAgo.getMonth() + 1).padStart(2, '0');
+      const d = String(threeDaysAgo.getDate()).padStart(2, '0');
+      return `after:${y}-${m}-${d}`; // 近3天
+    } else if (timeRange === 7) {
+      const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      const y = sevenDaysAgo.getFullYear();
+      const m = String(sevenDaysAgo.getMonth() + 1).padStart(2, '0');
+      const d = String(sevenDaysAgo.getDate()).padStart(2, '0');
+      return `after:${y}-${m}-${d}`; // 近7天
+    }
+    return `after:${today}`;
   }
 
   // 过滤高质量新闻 - 排除视频，保留图文
