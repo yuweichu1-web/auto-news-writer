@@ -144,12 +144,8 @@ class NewsFetcher {
 
   // 过滤高质量新闻 - 排除视频，保留图文
   filterQualityNews(news) {
-    // 排除的关键词（噪音）
-    const excludeKeywords = [
-      '视频', '评测', '谍照', '概念车', '渲染图', '假想图',
-      '自媒体', '博主', '网红', '试驾', '到店', '实拍',
-      '猜想', '预测', '传言'
-    ];
+    // 只排除明显的非图文内容
+    const excludeKeywords = ['视频', '视频教程', '短视频'];
 
     return news.filter(item => {
       const title = (item.title || '').toLowerCase();
@@ -157,13 +153,13 @@ class NewsFetcher {
       const url = (item.url || '').toLowerCase();
       const content = title + summary + url;
 
-      // 排除噪音
+      // 排除视频
       for (const kw of excludeKeywords) {
         if (content.includes(kw)) return false;
       }
 
-      // 只要不是纯噪音就保留，过滤宽松一点
-      return content.length > 30;
+      // 基本保留所有内容
+      return true;
     });
   }
 
