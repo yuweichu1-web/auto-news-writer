@@ -98,11 +98,22 @@ class NewsFetcher {
   getSourceKeywords(timeRange) {
     const selected = this.getSelectedSources();
     const dateFilter = this.getDateFilter(timeRange);
+
+    // 根据时间范围添加不同的关键词
+    let timeKeywords = '';
+    if (timeRange === 1) {
+      timeKeywords = '今日 今天 最新';
+    } else if (timeRange === 3) {
+      timeKeywords = '近日 最新 最近';
+    } else {
+      timeKeywords = '最新 最近';
+    }
+
     const keywords = {
-      'all': `${dateFilter} 中国汽车新闻 新车上市 -视频`,
-      'autohome': `${dateFilter} site:autohome.com.cn/news 新车 上市`,
-      'dongche': `${dateFilter} site:dongchedi.com 新车 上市`,
-      'yiche': `${dateFilter} site:yiche.com 新车 上市`
+      'all': `${dateFilter} ${timeKeywords} 中国汽车新闻 新车上市 上市 -视频`,
+      'autohome': `${dateFilter} ${timeKeywords} site:autohome.com.cn/news 新车 上市`,
+      'dongche': `${dateFilter} ${timeKeywords} site:dongchedi.com 新车 上市`,
+      'yiche': `${dateFilter} ${timeKeywords} site:yiche.com 新车 上市`
     };
     return selected.map(s => keywords[s]).filter(k => k);
   }
@@ -202,6 +213,13 @@ class NewsFetcher {
     }
 
     return news.filter(item => {
+      // 优先使用item自带的publishTime字段
+      if (item.publishTime) {
+        const pubDate = new Date(item.publishTime);
+        if (!isNaN(pubDate.getTime())) {
+          return pubDate >= minDate;
+        }
+      }
       // 尝试从标题或摘要中提取日期
       const pubDate = this.extractDateFromItem(item);
       if (pubDate) {
@@ -325,7 +343,12 @@ class NewsFetcher {
           source: 'tavily',
           source_name: 'Tavily搜索',
           url: result.url || '#',
-          publishTime: new Date(Date.now() - Math.random() * 24 * 60 * 60 * 1000).toISOString()
+          // 优先使用Tavily返回的发布日期，否则使用当前时间附近
+          publishTime: result.published_date
+            ? new Date(result.published_date).toISOString()
+            : (result.published_on
+                ? new Date(result.published_on * 1000).toISOString()
+                : new Date(Date.now() - Math.random() * 24 * 60 * 60 * 1000).toISOString())
         }));
       }
 
