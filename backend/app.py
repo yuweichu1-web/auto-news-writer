@@ -70,6 +70,11 @@ WRITING_STYLES = {
 
 def call_volcano_api(prompt, model='doubao-lite-4k'):
     """调用火山引擎API"""
+    # 检查API Key是否配置
+    if not VOLCENGINE_ACCESS_KEY:
+        print("错误: 未配置 VOLCENGINE_ACCESS_KEY 环境变量")
+        return None
+
     # 构建请求 - 使用ARK API
     url = f"https://{VOLCENGINE_ENDPOINT}/api/v3/chat/completions"
 
@@ -79,7 +84,9 @@ def call_volcano_api(prompt, model='doubao-lite-4k'):
     else:
         model_name = VOLCENGINE_MODEL_SEARCH
 
-    # 火山引擎使用 API Key 认证
+    print(f"调用火山引擎 - 模型: {model_name}")
+
+    # 火山引擎使用 API Key 认证 (只使用 Access Key)
     headers = {
         'Content-Type': 'application/json',
         'Authorization': f'Bearer {VOLCENGINE_ACCESS_KEY}'
@@ -99,7 +106,7 @@ def call_volcano_api(prompt, model='doubao-lite-4k'):
 
         if response.ok:
             data = response.json()
-            print(f"火山引擎响应: {data}")
+            print(f"火山引擎响应成功")
             # 火山引擎返回格式
             if 'choices' in data and len(data['choices']) > 0:
                 return data['choices'][0]['message']['content']
