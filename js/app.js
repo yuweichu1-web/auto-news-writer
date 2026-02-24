@@ -31,19 +31,24 @@ class App {
     const allSources = newsFetcher.initSources(this.customSources);
 
     container.innerHTML = allSources.map(source => `
-      <label class="source-item ${this.isSourceSelected(source.id) ? 'selected' : ''}" data-source-id="${source.id}">
+      <div class="source-item ${this.isSourceSelected(source.id) ? 'selected' : ''}" data-source-id="${source.id}">
         <input type="checkbox" class="source-checkbox" value="${source.id}" ${this.isSourceSelected(source.id) ? 'checked' : ''}>
         <span class="source-icon">${source.icon || '📰'}</span>
         <span class="source-name">${source.name}</span>
         ${source.isCustom ? '<span class="custom-badge">自定义</span>' : ''}
-      </label>
+      </div>
     `).join('');
 
-    // 绑定点击事件
+    // 绑定点击事件 - 使用div而不是label，避免双重触发
     container.querySelectorAll('.source-item').forEach(item => {
       item.addEventListener('click', (e) => {
+        // 如果点击的是 checkbox 本身，让它自然处理
+        if (e.target.type === 'checkbox') {
+          this.onSourceChange(e.target.value, e.target.checked);
+          return;
+        }
+        // 点击其他区域，手动切换
         const checkbox = item.querySelector('input[type="checkbox"]');
-        // 直接切换状态
         checkbox.checked = !checkbox.checked;
         this.onSourceChange(checkbox.value, checkbox.checked);
       });

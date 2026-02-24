@@ -70,8 +70,24 @@ class NewsFetcher {
       console.log(`[过滤] 质量过滤后 ${filteredNews.length} 条`);
 
       // 严格按日期过滤 - 只保留指定时间范围内的新闻
-      const dateFilteredNews = this.filterByDateRange(filteredNews, timeRange);
+      let dateFilteredNews = this.filterByDateRange(filteredNews, timeRange);
       console.log(`[过滤] 日期过滤后 ${dateFilteredNews.length} 条`);
+
+      // 如果日期过滤后没有结果，放宽到7天
+      if (dateFilteredNews.length === 0 && timeRange === 1) {
+        console.log('[降级] 当天无结果，放宽到3天...');
+        dateFilteredNews = this.filterByDateRange(filteredNews, 3);
+      }
+      if (dateFilteredNews.length === 0) {
+        console.log('[降级] 放宽到7天...');
+        dateFilteredNews = this.filterByDateRange(filteredNews, 7);
+      }
+      // 如果7天也没有，就使用所有通过质量过滤的新闻
+      if (dateFilteredNews.length === 0) {
+        console.log('[降级] 使用所有新闻...');
+        dateFilteredNews = filteredNews;
+      }
+      console.log(`[最终] ${dateFilteredNews.length} 条新闻`);
 
       // 排除之前已显示的新闻
       const newNews = this.excludeOldNews(dateFilteredNews);
@@ -89,7 +105,12 @@ class NewsFetcher {
         this.newsData = limitedNews;
         return limitedNews;
       } else {
-        console.log('[警告] 所有新闻都被过滤掉了！');
+        console.log('[警告] 所有新闻都被过滤掉了，尝试不排除历史...');
+        // 如果排除历史后没结果，尝试不排除历史
+        const allResults = dateFilteredNews.sort(() => 0.5 - Math.random()).slice(0, 5);
+        this.addToHistory(allResults);
+        this.newsData = allResults;
+        return this.newsData;
       }
     } catch (e) {
       console.log('Tavily搜索失败:', e);
