@@ -64,8 +64,11 @@ class NewsFetcher {
       // 过滤噪音
       const filteredNews = this.filterQualityNews(allNews);
 
+      // 严格按日期过滤 - 只保留指定时间范围内的新闻
+      const dateFilteredNews = this.filterByDateRange(filteredNews, timeRange);
+
       // 排除之前已显示的新闻
-      const newNews = this.excludeOldNews(filteredNews);
+      const newNews = this.excludeOldNews(dateFilteredNews);
 
       // 随机打乱顺序
       const shuffledNews = newNews.sort(() => 0.5 - Math.random());
@@ -178,6 +181,105 @@ class NewsFetcher {
       // 基本保留所有内容
       return true;
     });
+  }
+
+  // 按日期范围过滤新闻
+  filterByDateRange(news, timeRange) {
+    const now = new Date();
+    let minDate;
+
+    if (timeRange === 1) {
+      // 当天 - 最近24小时
+      minDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    } else if (timeRange === 3) {
+      // 3天内
+      minDate = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000);
+    } else if (timeRange === 7) {
+      // 7天内
+      minDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    } else {
+      minDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    }
+
+    return news.filter(item => {
+      // 尝试从标题或摘要中提取日期
+      const pubDate = this.extractDateFromItem(item);
+      if (pubDate) {
+        return pubDate >= minDate;
+      }
+      // 如果无法提取日期，默认保留（避免过滤掉所有新闻）
+      return true;
+    });
+  }
+
+  // 从新闻项中提取日期
+  extractDateFromItem(item) {
+    const text = (item.title || '') + ' ' + (item.summary || '') + ' ' + (item.url || '');
+
+    // 匹配各种日期格式
+    // 2026年2月24日, 2026-02-24, 2026/02/24, 02-24, 2月24日
+    const patterns = [
+      /(\d{4})年(\d{1,2})月(\d{1,2})日/g,
+      /(\d{4})-(\d{1,2})-(\d{1,2})/g,
+      /(\d{4})\/(\d{1,2})\/(\d{1,2})/g,
+      /(\d{1,2})-(\d{1,2})/g,  // 月-日
+      /(\d{1,2})月(\d{1,2})日/g
+    ];
+
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth() + 1;
+    const currentDay = now.getDate();
+
+    for (const pattern of patterns) {
+      const matches = text.match(pattern);
+      if (matches) {
+        for (const match of matches) {
+          let year, month, day;
+
+          if (match.includes('年')) {
+            const parts = match.match(/(\d{4})年(\d{1,2})月(\d{1,2})日/);
+            if (parts) {
+              year = parseInt(parts[1]);
+              month = parseInt(parts[2]);
+              day = parseInt(parts[3]);
+            }
+          } else if (match.includes('-') && match.split('-').length === 3) {
+            const parts = match.split('-');
+            year = parseInt(parts[0]);
+            month = parseInt(parts[1]);
+            day = parseInt(parts[2]);
+          } else if (match.includes('/')) {
+            const parts = match.split('/');
+            year = parseInt(parts[0]);
+            month = parseInt(parts[1]);
+            day = parseInt(parts[2]);
+          } else if (match.includes('月')) {
+            const parts = match.match(/(\d{1,2})月(\d{1,2})日/);
+            if (parts) {
+              year = currentYear;
+              month = parseInt(parts[1]);
+              day = parseInt(parts[2]);
+            }
+          } else if (match.includes('-')) {
+            const parts = match.split('-');
+            year = currentYear;
+            month = parseInt(parts[0]);
+            day = parseInt(parts[1]);
+          }
+
+          if (year && month && day) {
+            const date = new Date(year, month - 1, day);
+            // 排除未来日期
+            if (date <= now) {
+              return date;
+            }
+          }
+        }
+      }
+    }
+
+    return null;
   }
 
   // 新闻去重
