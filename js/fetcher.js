@@ -153,7 +153,7 @@ class NewsFetcher {
     // 优先保留的关键词
     const includeKeywords = [
       '正式上市', '官方发布', '正式发布', '上市', '售价', '配置',
-      '价格', '发布', '官宣', '正式开售', '新车', '重磅'
+      '价格', '发布', '官宣', '正式开售', '新车', '重磅', '上市'
     ];
 
     return news.filter(item => {
@@ -167,11 +167,11 @@ class NewsFetcher {
         if (content.includes(kw)) return false;
       }
 
-      // 必须包含优先关键词
+      // 必须包含优先关键词或内容足够长
       const hasPriority = includeKeywords.some(kw => content.includes(kw));
 
-      // 有关键词且内容足够长
-      return hasPriority && content.length > 50;
+      // 有关键词或内容足够长就保留
+      return hasPriority || content.length > 80;
     });
   }
 
