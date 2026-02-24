@@ -10,13 +10,6 @@ const NEWS_SOURCES = [
     category: '权威汽车媒体'
   },
   {
-    id: 'yiche',
-    name: '易车',
-    url: 'https://www.yiche.com',
-    icon: '🚙',
-    category: '汽车垂直平台'
-  },
-  {
     id: 'dongche',
     name: '懂车帝',
     url: 'https://www.dongche.com',
@@ -24,18 +17,25 @@ const NEWS_SOURCES = [
     category: '字节跳动汽车'
   },
   {
-    id: 'pcauto',
-    name: '太平洋汽车',
-    url: 'https://www.pcauto.com.cn',
-    icon: '🚘',
-    category: '汽车门户'
+    id: 'yiche',
+    name: '易车',
+    url: 'https://www.yiche.com',
+    icon: '🚙',
+    category: '汽车垂直平台'
   },
   {
-    id: 'sina',
-    name: '新浪汽车',
-    url: 'https://auto.sina.com.cn',
-    icon: '🚔',
-    category: '综合汽车媒体'
+    id: 'newcar',
+    name: '新车发布',
+    url: 'https://www.autohome.com.cn',
+    icon: '🆕',
+    category: '新车资讯'
+  },
+  {
+    id: 'bignews',
+    name: '行业重磅',
+    url: 'https://www.dongche.com',
+    icon: '💥',
+    category: '行业新闻'
   }
 ];
 

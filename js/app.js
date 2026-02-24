@@ -14,9 +14,9 @@ class App {
     this.bindEvents();
     this.renderHistory();
     this.loadSettings();
-    // 默认选中汽车之家和懂车帝
+    // 默认选中所有新闻源
     const allSources = newsFetcher.initSources(this.customSources);
-    newsFetcher.setSelectedSources(['autohome', 'dongche']);
+    newsFetcher.setSelectedSources(['autohome', 'dongche', 'yiche', 'newcar', 'bignews']);
     this.renderSourceList();
   }
 

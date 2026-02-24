@@ -37,47 +37,41 @@ class NewsFetcher {
 
   // 获取新闻 - 使用Tavily搜索API
   async fetchNews(timeRange = 1) {
-    const selectedSources = this.getSelectedSources();
+    // timeRange: 1=当天, 3=3天内, 7=7天内
 
-    // 如果选择了新闻源，使用Tavily搜索
-    if (selectedSources.length > 0) {
-      try {
-        const keywords = {
-          'autohome': '汽车之家新车上市 2026',
-          'yiche': '易车新车发布 2026',
-          'dongche': '懂车帝汽车资讯 2026',
-          'pcauto': '太平洋汽车新车 2026',
-          'sina': '新浪汽车新闻 2026'
-        };
+    // 根据日期范围设置搜索关键词
+    const dateFilter = this.getDateFilter(timeRange);
 
-        const allNews = [];
+    // 搜索关键词：汽车之家、懂车帝、易车 + 新车发布、行业重磅
+    const searchKeywords = [
+      `${dateFilter} 汽车之家 新车发布`,
+      `${dateFilter} 懂车帝 新车上市`,
+      `${dateFilter} 易车 新车发布`,
+      `${dateFilter} 汽车行业重磅新闻`,
+      `${dateFilter} 新能源车 发布`
+    ];
 
-        for (const sourceId of selectedSources) {
-          const keyword = keywords[sourceId] || '汽车新闻 2026';
-          const results = await this.tavilySearch(keyword);
-          // 只取5条
-          allNews.push(...results.slice(0, 5));
-        }
+    const allNews = [];
 
-        // 只返回5条
-        const limitedNews = allNews.slice(0, 5);
-
-        if (limitedNews.length > 0) {
-          this.newsData = limitedNews;
-          return limitedNews;
-        }
-      } catch (e) {
-        console.log('Tavily搜索失败:', e);
-      }
-    }
-
-    // 如果没有选择新闻源或搜索失败，使用通用搜索
     try {
-      const results = await this.tavilySearch('中国汽车新闻 最新 2026');
-      const limitedResults = results.slice(0, 5);
-      if (limitedResults.length > 0) {
-        this.newsData = limitedResults;
-        return limitedResults;
+      // 并行搜索所有关键词
+      const searchPromises = searchKeywords.map(keyword => this.tavilySearch(keyword));
+      const results = await Promise.all(searchPromises);
+
+      // 合并所有结果
+      results.forEach(items => {
+        allNews.push(...items);
+      });
+
+      // 去重（根据URL）
+      const uniqueNews = this.deduplicateNews(allNews);
+
+      // 取5条
+      const limitedNews = uniqueNews.slice(0, 5);
+
+      if (limitedNews.length > 0) {
+        this.newsData = limitedNews;
+        return limitedNews;
       }
     } catch (e) {
       console.log('Tavily搜索失败:', e);
@@ -85,10 +79,31 @@ class NewsFetcher {
 
     // 如果Tavily失败，使用模拟数据
     console.log('使用模拟数据...');
-    const mockNews = this.generateMockNews(selectedSources, timeRange);
+    const mockNews = this.generateMockNews(['autohome', 'dongche'], timeRange);
     mockNews.sort((a, b) => new Date(b.publishTime) - new Date(a.publishTime));
-    this.newsData = mockNews;
-    return mockNews;
+    this.newsData = mockNews.slice(0, 5);
+    return this.newsData;
+  }
+
+  // 获取日期过滤字符串
+  getDateFilter(timeRange) {
+    const days = {
+      1: '今天',
+      3: '近3天',
+      7: '近7天'
+    };
+    return days[timeRange] || '今天';
+  }
+
+  // 新闻去重
+  deduplicateNews(news) {
+    const seen = new Set();
+    return news.filter(item => {
+      const key = item.url || item.title;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
   }
 
   // Tavily搜索
