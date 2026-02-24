@@ -1,16 +1,23 @@
-# app.py - Flask后端服务 (AI版)
+# app.py - Flask后端服务 (火山引擎版)
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 import os
 import requests
 import json
+import hashlib
+import hmac
+import time
 from datetime import datetime
 
 app = Flask(__name__)
 CORS(app)
 
 # 导入配置
-from config import TAVILY_API_KEY, ANTHROPIC_API_KEY, CLAUDE_MODEL, SEARCH_MAX_RESULTS
+from config import (
+    VOLCENGINE_ACCESS_KEY, VOLCENGINE_SECRET_KEY,
+    VOLCENGINE_ENDPOINT, VOLCENGINE_MODEL_SEARCH, VOLCENGINE_MODEL_DEEP,
+    TAVILY_API_KEY, SEARCH_MAX_RESULTS
+)
 
 # 新闻源配置
 NEWS_SOURCES = {
@@ -61,11 +68,60 @@ WRITING_STYLES = {
     }
 }
 
+def call_volcano_api(prompt, model='doubao-lite-4k'):
+    """调用火山引擎API"""
+    # 构建请求 - 使用ARK API
+    url = f"https://{VOLCENGINE_ENDPOINT}/api/v3/chat/completions"
+
+    # 选择模型
+    if model == 'deep':
+        model_name = VOLCENGINE_MODEL_DEEP
+    else:
+        model_name = VOLCENGINE_MODEL_SEARCH
+
+    # 火山引擎使用 API Key 认证
+    headers = {
+        'Content-Type': 'application/json',
+        'Authorization': f'Bearer {VOLCENGINE_ACCESS_KEY}'
+    }
+
+    payload = {
+        'model': model_name,
+        'messages': [
+            {'role': 'user', 'content': prompt}
+        ],
+        'max_tokens': 2048,
+        'temperature': 0.7
+    }
+
+    try:
+        response = requests.post(url, headers=headers, json=payload, timeout=30)
+
+        if response.ok:
+            data = response.json()
+            print(f"火山引擎响应: {data}")
+            # 火山引擎返回格式
+            if 'choices' in data and len(data['choices']) > 0:
+                return data['choices'][0]['message']['content']
+            elif 'content' in data:
+                return data['content']
+        else:
+            print(f"火山引擎API错误: {response.status_code} - {response.text}")
+            return None
+    except Exception as e:
+        print(f"调用火山引擎出错: {e}")
+        return None
+
 @app.route('/')
 def index():
     return jsonify({
         'name': '汽车新闻快编 API',
-        'version': '2.0',
+        'version': '3.0',
+        'provider': '火山引擎',
+        'models': {
+            'search': VOLCENGINE_MODEL_SEARCH,
+            'deep': VOLCENGINE_MODEL_DEEP
+        },
         'endpoints': {
             '/api/news': '获取新闻',
             '/api/rewrite': 'AI改写'
@@ -195,12 +251,13 @@ def rewrite_news():
     news_item = data.get('news', {})
     format_type = data.get('format', 'short')
     style = data.get('style', 'vlog')
+    use_deep = data.get('deep', False)  # 是否使用深度模型
 
     if not news_item:
         return jsonify({'success': False, 'error': '新闻内容不能为空'}), 400
 
     try:
-        result = rewrite_with_ai(news_item, format_type, style)
+        result = rewrite_with_ai(news_item, format_type, style, use_deep)
         return jsonify({
             'success': True,
             'data': result
@@ -212,12 +269,8 @@ def rewrite_news():
             'error': str(e)
         }), 500
 
-def rewrite_with_ai(news_item, format_type, style):
-    """使用Claude API改写新闻"""
-    if not ANTHROPIC_API_KEY:
-        # 如果没有API Key，返回模拟数据
-        return generate_mock_rewrite(news_item, style)
-
+def rewrite_with_ai(news_item, format_type, style, use_deep=False):
+    """使用火山引擎API改写新闻"""
     # 构建提示词
     style_config = WRITING_STYLES.get(style, WRITING_STYLES['vlog'])
     prompt = style_config['prompt']
@@ -226,37 +279,35 @@ def rewrite_with_ai(news_item, format_type, style):
     title = news_item.get('title', '')
     summary = news_item.get('summary', '')
 
+    # 根据格式控制长度
+    length_hint = ""
+    if format_type == 'short':
+        length_hint = "长度控制在100-300字"
+    else:
+        length_hint = "长度控制在500-1500字，可以分点详细说明"
+
     user_message = f"""请根据以下新闻素材进行改写：
 
 新闻标题：{title}
 
 新闻内容：{summary}
 
+{length_hint}
+
 请按照以上风格要求进行改写。"""
 
-    # 调用Claude API
-    url = 'https://api.anthropic.com/v1/messages'
-    headers = {
-        'x-api-key': ANTHROPIC_API_KEY,
-        'anthropic-version': '2023-06-01',
-        'content-type': 'application/json'
-    }
+    full_prompt = prompt + "\n\n" + user_message
 
-    payload = {
-        'model': CLAUDE_MODEL,
-        'max_tokens': 1024,
-        'messages': [
-            {'role': 'user', 'content': prompt + '\n\n' + user_message}
-        ]
-    }
+    # 选择模型
+    model = 'deep' if use_deep else 'lite'
 
-    response = requests.post(url, headers=headers, json=payload, timeout=30)
+    # 调用火山引擎API
+    result = call_volcano_api(full_prompt, model)
 
-    if response.ok:
-        data = response.json()
-        return data.get('content', [{}])[0].get('text', '')
+    if result:
+        return result
     else:
-        print(f"Claude API错误: {response.text}")
+        # 如果API调用失败，返回模拟数据
         return generate_mock_rewrite(news_item, style)
 
 def generate_mock_rewrite(news_item, style):
@@ -294,5 +345,6 @@ def generate_mock_rewrite(news_item, style):
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     print(f"🚀 汽车新闻快编 API 启动中...")
+    print(f"🔥 使用火山引擎豆包模型")
     print(f"📡 端口: {port}")
     app.run(host='0.0.0.0', port=port, debug=True)
