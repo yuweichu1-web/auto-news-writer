@@ -1,4 +1,7 @@
-// fetcher.js - 新闻抓取模块（纯前端版）
+// fetcher.js - 新闻抓取模块（纯前端版 - 使用Tavily搜索）
+
+// Tavily API配置
+const TAVILY_API_KEY = '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';
 
 class NewsFetcher {
   constructor() {
@@ -32,63 +35,98 @@ class NewsFetcher {
     this.selectedSources = new Set(sourceIds);
   }
 
-  // 获取新闻 - 使用搜索API
+  // 获取新闻 - 使用Tavily搜索API
   async fetchNews(timeRange = 1) {
-    if (this.selectedSources.size === 0) {
-      throw new Error('请至少选择一个新闻源');
-    }
-
     const selectedSources = this.getSelectedSources();
-    const allNews = [];
 
-    // 搜索关键词
-    const keywords = ['汽车新闻', '新车上市', '新能源车', '车型发布'];
-
-    for (const keyword of keywords) {
+    // 如果选择了新闻源，使用Tavily搜索
+    if (selectedSources.length > 0) {
       try {
-        // 使用 DuckDuckGo 免费搜索 API
-        const url = `https://api.duckduckgo.com/?q=${encodeURIComponent(keyword)}&format=json&no_html=1&skip_disambig=1`;
-        const response = await fetch(url);
+        const keywords = {
+          'autohome': '汽车之家新车上市 2026',
+          'yiche': '易车新车发布 2026',
+          'dongche': '懂车帝汽车资讯 2026',
+          'pcauto': '太平洋汽车新车 2026',
+          'sina': '新浪汽车新闻 2026'
+        };
 
-        if (response.ok) {
-          const data = await response.json();
-          if (data.RelatedTopics) {
-            data.RelatedTopics.forEach((topic, idx) => {
-              if (topic.Text && topic.Text.length > 20) {
-                allNews.push({
-                  id: `search_${Date.now()}_${idx}`,
-                  title: topic.Text.split(' - ')[0] || topic.Text.substring(0, 50),
-                  summary: topic.Text.substring(0, 100),
-                  source: 'duckduckgo',
-                  source_name: '搜索结果',
-                  url: topic.FirstURL || '#',
-                  publishTime: new Date(Date.now() - Math.random() * timeRange * 24 * 60 * 60 * 1000).toISOString()
-                });
-              }
-            });
-          }
+        const allNews = [];
+
+        for (const sourceId of selectedSources) {
+          const keyword = keywords[sourceId] || '汽车新闻 2026';
+          const results = await this.tavilySearch(keyword);
+          allNews.push(...results);
+        }
+
+        if (allNews.length > 0) {
+          this.newsData = allNews;
+          return allNews;
         }
       } catch (e) {
-        console.log('搜索API失败，使用模拟数据');
+        console.log('Tavily搜索失败:', e);
       }
     }
 
-    // 如果没有获取到搜索结果，使用模拟数据
-    if (allNews.length === 0) {
-      console.log('使用模拟数据...');
-      const mockNews = this.generateMockNews(selectedSources, timeRange);
-      mockNews.sort((a, b) => new Date(b.publishTime) - new Date(a.publishTime));
-      this.newsData = mockNews;
-      return mockNews;
+    // 如果没有选择新闻源或搜索失败，使用通用搜索
+    try {
+      const results = await this.tavilySearch('中国汽车新闻 最新 2026');
+      if (results.length > 0) {
+        this.newsData = results;
+        return results;
+      }
+    } catch (e) {
+      console.log('Tavily搜索失败:', e);
     }
 
-    // 去重并返回
-    const uniqueNews = allNews.filter((news, index, self) =>
-      index === self.findIndex((n) => n.title === news.title)
-    ).slice(0, 20);
+    // 如果Tavily失败，使用模拟数据
+    console.log('使用模拟数据...');
+    const mockNews = this.generateMockNews(selectedSources, timeRange);
+    mockNews.sort((a, b) => new Date(b.publishTime) - new Date(a.publishTime));
+    this.newsData = mockNews;
+    return mockNews;
+  }
 
-    this.newsData = uniqueNews;
-    return uniqueNews;
+  // Tavily搜索
+  async tavilySearch(query) {
+    try {
+      const response = await fetch('https://api.tavily.com/search', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          api_key: TAVILY_API_KEY,
+          query: query,
+          max_results: 10,
+          include_images: false,
+          include_answer: true,
+          include_raw_content: false
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Tavily API请求失败');
+      }
+
+      const data = await response.json();
+
+      if (data.results) {
+        return data.results.map((result, idx) => ({
+          id: `tavily_${Date.now()}_${idx}`,
+          title: result.title || result.url,
+          summary: result.content || result.url,
+          source: 'tavily',
+          source_name: 'Tavily搜索',
+          url: result.url || '#',
+          publishTime: new Date(Date.now() - Math.random() * 24 * 60 * 60 * 1000).toISOString()
+        }));
+      }
+
+      return [];
+    } catch (e) {
+      console.error('Tavily搜索错误:', e);
+      return [];
+    }
   }
 
   // 生成模拟新闻数据（备用）
