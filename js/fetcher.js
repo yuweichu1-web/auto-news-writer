@@ -42,13 +42,16 @@ class NewsFetcher {
     // 根据日期范围设置搜索关键词
     const dateFilter = this.getDateFilter(timeRange);
 
-    // 搜索关键词：汽车之家、懂车帝、易车 + 新车发布、行业重磅
+    // 搜索关键词：单车/多车官方上市新闻 + 行业重磅
     const searchKeywords = [
-      `${dateFilter} 汽车之家 新车发布`,
-      `${dateFilter} 懂车帝 新车上市`,
-      `${dateFilter} 易车 新车发布`,
-      `${dateFilter} 汽车行业重磅新闻`,
-      `${dateFilter} 新能源车 发布`
+      // 单车/多车官方上市新闻
+      `${dateFilter} 车型 正式上市 官方 2026`,
+      `${dateFilter} 新车 上市发布 汽车之家 2026`,
+      `${dateFilter} 懂车帝 新车上市 官方公告`,
+      `${dateFilter} 易车 新车发布 正式上市`,
+      // 行业重磅新闻
+      `${dateFilter} 汽车行业 重磅 2026`,
+      `${dateFilter} 车企 重大发布 官方`
     ];
 
     const allNews = [];
@@ -63,8 +66,11 @@ class NewsFetcher {
         allNews.push(...items);
       });
 
+      // 过滤掉噪音，保留高质量内容
+      const filteredNews = this.filterQualityNews(allNews);
+
       // 去重（根据URL）
-      const uniqueNews = this.deduplicateNews(allNews);
+      const uniqueNews = this.deduplicateNews(filteredNews);
 
       // 取5条
       const limitedNews = uniqueNews.slice(0, 5);
@@ -93,6 +99,29 @@ class NewsFetcher {
       7: '近7天'
     };
     return days[timeRange] || '今天';
+  }
+
+  // 过滤高质量新闻
+  filterQualityNews(news) {
+    // 排除的关键词
+    const excludeKeywords = ['视频', '评测', '谍照', '预告', '概念车', '渲染图', '假想图', '预告图'];
+    // 优先保留的关键词
+    const includeKeywords = ['正式上市', '官方发布', '正式发布', '上市', '售价', '配置', '价格', '上市', '发布'];
+
+    return news.filter(item => {
+      const title = (item.title || '').toLowerCase();
+      const summary = (item.summary || '').toLowerCase();
+      const content = title + summary;
+
+      // 排除噪音
+      for (const kw of excludeKeywords) {
+        if (content.includes(kw)) return false;
+      }
+
+      // 至少包含一个优先关键词
+      const hasPriority = includeKeywords.some(kw => content.includes(kw));
+      return hasPriority || content.length > 50;
+    });
   }
 
   // 新闻去重
