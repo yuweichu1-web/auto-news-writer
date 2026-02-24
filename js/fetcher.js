@@ -102,13 +102,21 @@ class NewsFetcher {
   getSourceKeywords(timeRange) {
     const selected = this.getSelectedSources();
 
-    // 微博汽车热榜搜索
+    // 搜索规则：
+    // 微博汽车 -> 微博实时热榜
+    // 全网 -> 百度搜索
+    // 汽车之家/懂车帝/易车 -> 对应网站搜索
     const keywords = {
-      'weibo': 'site:weibo.com 汽车热榜 新车 上市',
-      'all': 'site:weibo.com 汽车热榜 新车',
-      'autohome': 'site:weibo.com 汽车 新车 上市',
-      'dongche': 'site:weibo.com 汽车 新车 政策',
-      'yiche': 'site:weibo.com 车企 行业'
+      // 微博汽车热榜 - 实时热门
+      'weibo': 'site:weibo.com  汽车热榜 新车',
+      // 全网搜索 - 百度+微博热榜
+      'all': '汽车 新车 上市 政策 行业',
+      // 汽车之家
+      'autohome': 'site:autohome.com.cn/news 新车 上市',
+      // 懂车帝
+      'dongche': 'site:dongchedi.com 新车 上市',
+      // 易车
+      'yiche': 'site:yiche.com 新车 上市'
     };
     return selected.map(s => keywords[s]).filter(k => k);
   }
