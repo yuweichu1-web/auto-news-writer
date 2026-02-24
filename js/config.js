@@ -3,6 +3,13 @@
 // 预设新闻源
 const NEWS_SOURCES = [
   {
+    id: 'all',
+    name: '全网',
+    url: 'https://www.baidu.com',
+    icon: '🌐',
+    category: '全网搜索'
+  },
+  {
     id: 'autohome',
     name: '汽车之家',
     url: 'https://www.autohome.com.cn',

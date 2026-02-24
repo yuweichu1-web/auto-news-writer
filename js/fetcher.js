@@ -41,11 +41,9 @@ class NewsFetcher {
 
     const selectedSources = this.getSelectedSources();
 
-    // 如果没有选择任何新闻源，随机选择1-2个
+    // 如果没有选择任何新闻源，默认使用全网搜索
     if (selectedSources.length === 0) {
-      const allSources = ['autohome', 'dongche', 'yiche'];
-      const randomSources = allSources.sort(() => 0.5 - Math.random()).slice(0, 2);
-      this.selectedSources = new Set(randomSources);
+      this.selectedSources = new Set(['all']);
     }
 
     // 根据日期范围设置搜索关键词
@@ -97,9 +95,10 @@ class NewsFetcher {
   getSourceKeywords() {
     const selected = this.getSelectedSources();
     const keywords = {
-      'autohome': '汽车之家 新车 上市',
-      'dongche': '懂车帝 新车 上市',
-      'yiche': '易车 新车 上市'
+      'all': '中国汽车新闻 新车上市 site:cn OR site:.cn',
+      'autohome': '汽车之家 新车 上市 site:autohome.com.cn',
+      'dongche': '懂车帝 新车 上市 site:dongchedi.com',
+      'yiche': '易车 新车 上市 site:yiche.com'
     };
     return selected.map(s => keywords[s]).filter(k => k);
   }
