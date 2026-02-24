@@ -146,14 +146,9 @@ class NewsFetcher {
   filterQualityNews(news) {
     // 排除的关键词（噪音）
     const excludeKeywords = [
-      '视频', '评测', '谍照', '预告', '概念车', '渲染图', '假想图',
-      '自媒体', '博主', '网红', '个人观点', '试驾', '到店', '实拍',
-      '猜想', '预测', '传言', '话题', '互动'
-    ];
-    // 优先保留的关键词
-    const includeKeywords = [
-      '正式上市', '官方发布', '正式发布', '上市', '售价', '配置',
-      '价格', '发布', '官宣', '正式开售', '新车', '重磅', '上市'
+      '视频', '评测', '谍照', '概念车', '渲染图', '假想图',
+      '自媒体', '博主', '网红', '试驾', '到店', '实拍',
+      '猜想', '预测', '传言'
     ];
 
     return news.filter(item => {
@@ -167,11 +162,8 @@ class NewsFetcher {
         if (content.includes(kw)) return false;
       }
 
-      // 必须包含优先关键词或内容足够长
-      const hasPriority = includeKeywords.some(kw => content.includes(kw));
-
-      // 有关键词或内容足够长就保留
-      return hasPriority || content.length > 80;
+      // 只要不是纯噪音就保留，过滤宽松一点
+      return content.length > 30;
     });
   }
 
