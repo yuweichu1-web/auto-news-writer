@@ -95,10 +95,10 @@ class NewsFetcher {
   getSourceKeywords() {
     const selected = this.getSelectedSources();
     const keywords = {
-      'all': '中国汽车新闻 新车上市 site:cn OR site:.cn',
-      'autohome': '汽车之家 新车 上市 site:autohome.com.cn',
-      'dongche': '懂车帝 新车 上市 site:dongchedi.com',
-      'yiche': '易车 新车 上市 site:yiche.com'
+      'all': '中国汽车新闻 新车上市 -视频 -评测',
+      'autohome': 'site:autohome.com.cn/news 新车 上市',
+      'dongche': 'site:dongchedi.com 新车 上市',
+      'yiche': 'site:yiche.com 新车 上市'
     };
     return selected.map(s => keywords[s]).filter(k => k);
   }
