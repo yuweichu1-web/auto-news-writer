@@ -42,16 +42,23 @@ class NewsFetcher {
     // 根据日期范围设置搜索关键词
     const dateFilter = this.getDateFilter(timeRange);
 
-    // 搜索关键词：单车/多车官方上市新闻 + 行业重磅
+    // 搜索垂直媒体官方频道 + 排除自媒体
     const searchKeywords = [
-      // 单车/多车官方上市新闻
-      `${dateFilter} 车型 正式上市 官方 2026`,
-      `${dateFilter} 新车 上市发布 汽车之家 2026`,
-      `${dateFilter} 懂车帝 新车上市 官方公告`,
-      `${dateFilter} 易车 新车发布 正式上市`,
-      // 行业重磅新闻
-      `${dateFilter} 汽车行业 重磅 2026`,
-      `${dateFilter} 车企 重大发布 官方`
+      // 汽车之家官方
+      `${dateFilter} site:autohome.com.cn 上市 官方`,
+      `${dateFilter} site:autohome.com.cn 新车发布`,
+      // 懂车帝官方
+      `${dateFilter} site:dongche.com 上市 官方`,
+      `${dateFilter} site:dongche.com 新车发布`,
+      // 易车官方
+      `${dateFilter} site:yiche.com 上市 官方`,
+      `${dateFilter} site:yiche.com 新车发布`,
+      // 新浪汽车
+      `${dateFilter} site:auto.sina.com.cn 上市`,
+      // 太平洋汽车
+      `${dateFilter} site:pcauto.com.cn 上市 新车`,
+      // 行业重磅
+      `${dateFilter} 汽车行业 重大发布 官方`
     ];
 
     const allNews = [];
@@ -66,7 +73,7 @@ class NewsFetcher {
         allNews.push(...items);
       });
 
-      // 过滤掉噪音，保留高质量内容
+      // 过滤噪音，保留垂直媒体官方新闻
       const filteredNews = this.filterQualityNews(allNews);
 
       // 去重（根据URL）
@@ -101,26 +108,45 @@ class NewsFetcher {
     return days[timeRange] || '今天';
   }
 
-  // 过滤高质量新闻
+  // 过滤高质量新闻 - 排除自媒体，保留垂直媒体官方
   filterQualityNews(news) {
-    // 排除的关键词
-    const excludeKeywords = ['视频', '评测', '谍照', '预告', '概念车', '渲染图', '假想图', '预告图'];
+    // 排除的关键词（噪音）
+    const excludeKeywords = [
+      '视频', '评测', '谍照', '预告', '概念车', '渲染图', '假想图',
+      '自媒体', '博主', '网红', '个人观点', '试驾', '到店', '实拍',
+      '猜想', '预测', '展望', '展望', '展望', '传言'
+    ];
     // 优先保留的关键词
-    const includeKeywords = ['正式上市', '官方发布', '正式发布', '上市', '售价', '配置', '价格', '上市', '发布'];
+    const includeKeywords = [
+      '正式上市', '官方发布', '正式发布', '上市', '售价', '配置',
+      '价格', '上市', '发布', '上市', '官宣', '正式上市', '正式开售'
+    ];
+    // 垂直媒体域名
+    const trustedDomains = [
+      'autohome.com.cn', 'dongche.com', 'yiche.com',
+      'auto.sina.com.cn', 'pcauto.com.cn', 'qq.com/auto',
+      'sohu.com/car', '163.com/dy', 'ifeng.com/auto'
+    ];
 
     return news.filter(item => {
       const title = (item.title || '').toLowerCase();
       const summary = (item.summary || '').toLowerCase();
-      const content = title + summary;
+      const url = (item.url || '').toLowerCase();
+      const content = title + summary + url;
 
       // 排除噪音
       for (const kw of excludeKeywords) {
         if (content.includes(kw)) return false;
       }
 
-      // 至少包含一个优先关键词
+      // 优先保留垂直媒体官方域名
+      const isFromTrusted = trustedDomains.some(domain => url.includes(domain));
+
+      // 必须包含优先关键词
       const hasPriority = includeKeywords.some(kw => content.includes(kw));
-      return hasPriority || content.length > 50;
+
+      // 来自可信域名且有关键词，或者内容较长
+      return (isFromTrusted && hasPriority) || (hasPriority && content.length > 80);
     });
   }
 
