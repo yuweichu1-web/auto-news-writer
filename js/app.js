@@ -10,7 +10,6 @@ class App {
   // 初始化
   init() {
     this.loadCustomSources();
-    this.renderSourceList();
     this.bindEvents();
     this.renderHistory();
     this.loadSettings();
