@@ -42,8 +42,8 @@ class NewsFetcher {
     // 根据日期范围设置搜索关键词
     const dateFilter = this.getDateFilter(timeRange);
 
-    // 搜索汽车之家 + 懂车帝的新车/重磅新闻
-    const searchQuery = `${dateFilter} 新车 重磅汽车新闻 site:autohome.com.cn OR site:dongchedi.com`;
+    // 搜索全网新车/重磅新闻，排除视频
+    const searchQuery = `${dateFilter} 新车 重磅汽车新闻 -视频 -评测`;
 
     try {
       const results = await this.tavilySearch(searchQuery);
@@ -83,7 +83,7 @@ class NewsFetcher {
     return days[timeRange] || '今天';
   }
 
-  // 过滤高质量新闻 - 排除自媒体，保留垂直媒体官方
+  // 过滤高质量新闻 - 排除视频，保留图文
   filterQualityNews(news) {
     // 排除的关键词（噪音）
     const excludeKeywords = [
@@ -95,11 +95,6 @@ class NewsFetcher {
     const includeKeywords = [
       '正式上市', '官方发布', '正式发布', '上市', '售价', '配置',
       '价格', '发布', '官宣', '正式开售', '新车', '重磅'
-    ];
-    // 垂直媒体域名
-    const trustedDomains = [
-      'autohome.com.cn', 'dongchedi.com', 'dongche.com',
-      'yiche.com', 'auto.sina.com.cn', 'pcauto.com.cn'
     ];
 
     return news.filter(item => {
@@ -113,14 +108,11 @@ class NewsFetcher {
         if (content.includes(kw)) return false;
       }
 
-      // 优先保留垂直媒体官方域名
-      const isFromTrusted = trustedDomains.some(domain => url.includes(domain));
-
       // 必须包含优先关键词
       const hasPriority = includeKeywords.some(kw => content.includes(kw));
 
-      // 来自可信域名且有关键词，或者内容较长
-      return (isFromTrusted && hasPriority) || (hasPriority && content.length > 50);
+      // 有关键词且内容足够长
+      return hasPriority && content.length > 50;
     });
   }
 
