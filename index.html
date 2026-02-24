@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>汽车新闻快编 - AI自媒体内容生成工具</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="bg-gray-50 min-h-screen">
+  <!-- 顶部导航 -->
+  <nav class="bg-gradient-to-r from-blue-600 to-blue-800 text-white shadow-lg">
+    <div class="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center text-2xl">🚗</div>
+        <h1 class="text-xl font-bold">汽车新闻快编</h1>
+      </div>
+      <div class="flex items-center gap-4">
+        <button id="themeToggle" class="text-sm hover:text-blue-200">🌙 深色</button>
+        <button id="settingsBtn" class="text-sm hover:text-blue-200">⚙️ 设置</button>
+      </div>
+    </div>
+  </nav>
+
+  <main class="max-w-6xl mx-auto px-4 py-6">
+    <!-- 新闻源选择 -->
+    <section class="mb-6">
+      <h2 class="text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2">
+        <span class="w-1 h-6 bg-blue-600 rounded"></span>
+        新闻源选择
+      </h2>
+      <div class="bg-white rounded-xl shadow-sm p-4">
+        <div class="flex flex-wrap gap-2" id="sourceList">
+          <!-- 新闻源选项 -->
+        </div>
+        <button id="addSourceBtn" class="mt-3 text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1">
+          <span>+</span> 自定义新闻源
+        </button>
+      </div>
+    </section>
+
+    <!-- 时间范围 -->
+    <section class="mb-6">
+      <h2 class="text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2">
+        <span class="w-1 h-6 bg-blue-600 rounded"></span>
+        时间范围
+      </h2>
+      <div class="bg-white rounded-xl shadow-sm p-4">
+        <div class="flex gap-4">
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input type="radio" name="timeRange" value="1" class="w-4 h-4 text-blue-600" checked>
+            <span class="text-gray-700">今天</span>
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input type="radio" name="timeRange" value="3" class="w-4 h-4 text-blue-600">
+            <span class="text-gray-700">3天内</span>
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input type="radio" name="timeRange" value="7" class="w-4 h-4 text-blue-600">
+            <span class="text-gray-700">7天内</span>
+          </label>
+        </div>
+      </div>
+    </section>
+
+    <!-- 获取新闻按钮 -->
+    <section class="mb-6">
+      <button id="fetchNewsBtn" class="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white py-4 rounded-xl font-semibold text-lg shadow-lg hover:shadow-xl transition-all hover:scale-[1.01] active:scale-[0.99] flex items-center justify-center gap-2">
+        <span>🔍</span> 获取新闻
+      </button>
+    </section>
+
+    <!-- 新闻列表 -->
+    <section class="mb-8" id="newsSection" style="display: none;">
+      <h2 class="text-lg font-semibold text-gray-800 mb-3 flex items-center justify-between">
+        <span class="flex items-center gap-2">
+          <span class="w-1 h-6 bg-blue-600 rounded"></span>
+          已获取新闻
+        </span>
+        <span class="text-sm text-gray-500" id="newsCount">0 条</span>
+      </h2>
+      <div class="space-y-3" id="newsList">
+        <!-- 新闻卡片 -->
+      </div>
+    </section>
+
+    <!-- 编写输出 -->
+    <section id="writeSection" class="mb-6" style="display: none;">
+      <h2 class="text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2">
+        <span class="w-1 h-6 bg-orange-500 rounded"></span>
+        编写输出
+      </h2>
+      <div class="bg-white rounded-xl shadow-sm p-4">
+        <!-- 格式和风格选择 -->
+        <div class="grid md:grid-cols-2 gap-4 mb-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">输出格式</label>
+            <div class="flex gap-4">
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="radio" name="outputFormat" value="short" class="w-4 h-4 text-blue-600" checked>
+                <span class="text-gray-700">📝 短文案</span>
+                <span class="text-xs text-gray-400">(100-300字)</span>
+              </label>
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="radio" name="outputFormat" value="long" class="w-4 h-4 text-blue-600">
+                <span class="text-gray-700">📄 长文章</span>
+                <span class="text-xs text-gray-400">(500-1500字)</span>
+              </label>
+            </div>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">风格选择</label>
+            <select id="styleSelect" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+              <option value="vlog">🎬 vlog风 - 活泼口语</option>
+              <option value="review">📊 专业评测风 - 客观数据</option>
+              <option value="push">❤️ 种草安利风 - 情绪推荐</option>
+              <option value="news">📰 新闻报道风 - 简洁客观</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- 选中新闻预览 -->
+        <div class="mb-4 p-3 bg-gray-50 rounded-lg">
+          <div class="text-sm text-gray-500 mb-1">已选新闻：</div>
+          <div class="text-gray-800 font-medium" id="selectedNewsTitle">未选择</div>
+        </div>
+
+        <!-- AI改写按钮 -->
+        <button id="rewriteBtn" class="w-full bg-gradient-to-r from-orange-500 to-orange-600 text-white py-3 rounded-lg font-semibold shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2">
+          <span>🤖</span> AI改写
+        </button>
+      </div>
+    </section>
+
+    <!-- 改写结果 -->
+    <section id="resultSection" class="mb-6" style="display: none;">
+      <h2 class="text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2">
+        <span class="w-1 h-6 bg-green-500 rounded"></span>
+        改写结果
+      </h2>
+      <div class="bg-white rounded-xl shadow-sm p-4">
+        <div id="resultContent" class="prose prose-sm max-w-none text-gray-800 whitespace-pre-wrap leading-relaxed">
+          <!-- 改写结果内容 -->
+        </div>
+
+        <!-- 操作按钮 -->
+        <div class="flex flex-wrap gap-3 mt-4 pt-4 border-t border-gray-100">
+          <button id="copyBtn" class="flex-1 sm:flex-none px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center justify-center gap-2">
+            <span>📋</span> 复制
+          </button>
+          <button id="downloadBtn" class="flex-1 sm:flex-none px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition flex items-center justify-center gap-2">
+            <span>📥</span> 下载
+          </button>
+          <button id="regenerateBtn" class="flex-1 sm:flex-none px-4 py-2 bg-orange-100 text-orange-600 rounded-lg hover:bg-orange-200 transition flex items-center justify-center gap-2">
+            <span>🔄</span> 重新生成
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 历史记录 -->
+    <section class="mb-6">
+      <h2 class="text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2">
+        <span class="w-1 h-6 bg-gray-400 rounded"></span>
+        历史记录
+      </h2>
+      <div class="bg-white rounded-xl shadow-sm p-4">
+        <div id="historyList" class="space-y-2">
+          <p class="text-gray-400 text-sm text-center py-4">暂无历史记录</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- 自定义新闻源弹窗 -->
+  <div id="customSourceModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden">
+    <div class="bg-white rounded-xl shadow-xl w-full max-w-md mx-4">
+      <div class="p-4 border-b border-gray-100 flex items-center justify-between">
+        <h3 class="font-semibold text-gray-800">添加自定义新闻源</h3>
+        <button id="closeModalBtn" class="text-gray-400 hover:text-gray-600">✕</button>
+      </div>
+      <div class="p-4 space-y-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">名称</label>
+          <input type="text" id="sourceName" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="例如：汽车头条">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">URL</label>
+          <input type="url" id="sourceUrl" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="https://...">
+        </div>
+      </div>
+      <div class="p-4 border-t border-gray-100 flex gap-3">
+        <button id="cancelAddBtn" class="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">取消</button>
+        <button id="confirmAddBtn" class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">添加</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 加载状态 -->
+  <div id="loadingOverlay" class="fixed inset-0 bg-black/30 flex items-center justify-center z-40 hidden">
+    <div class="bg-white rounded-xl p-6 flex flex-col items-center gap-3 shadow-xl">
+      <div class="w-10 h-10 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
+      <p class="text-gray-600" id="loadingText">加载中...</p>
+    </div>
+  </div>
+
+  <script src="js/config.js"></script>
+  <script src="js/fetcher.js"></script>
+  <script src="js/writer.js"></script>
+  <script src="js/storage.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
