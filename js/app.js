@@ -14,9 +14,9 @@ class App {
     this.bindEvents();
     this.renderHistory();
     this.loadSettings();
-    // 默认选中所有新闻源
+    // 默认选中汽车之家和懂车帝
     const allSources = newsFetcher.initSources(this.customSources);
-    allSources.forEach(source => newsFetcher.toggleSource(source.id));
+    newsFetcher.setSelectedSources(['autohome', 'dongche']);
     this.renderSourceList();
   }
 
@@ -142,6 +142,7 @@ class App {
             <span class="text-xs font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded">${String(index + 1).padStart(2, '0')}</span>
             <span class="source-tag">${this.getSourceName(item.source)}</span>
             <span class="time-tag">${this.formatTime(item.publishTime)}</span>
+            ${item.url && item.url !== '#' ? `<a href="${item.url}" target="_blank" class="text-xs text-blue-500 hover:underline" onclick="event.stopPropagation()">查看原文 →</a>` : ''}
           </div>
           <h3 class="font-medium text-gray-800 mb-1 truncate">${item.title}</h3>
           <p class="text-sm text-gray-500 line-clamp-2">${item.summary}</p>

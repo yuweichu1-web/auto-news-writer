@@ -55,12 +55,16 @@ class NewsFetcher {
         for (const sourceId of selectedSources) {
           const keyword = keywords[sourceId] || '汽车新闻 2026';
           const results = await this.tavilySearch(keyword);
-          allNews.push(...results);
+          // 只取5条
+          allNews.push(...results.slice(0, 5));
         }
 
-        if (allNews.length > 0) {
-          this.newsData = allNews;
-          return allNews;
+        // 只返回5条
+        const limitedNews = allNews.slice(0, 5);
+
+        if (limitedNews.length > 0) {
+          this.newsData = limitedNews;
+          return limitedNews;
         }
       } catch (e) {
         console.log('Tavily搜索失败:', e);
@@ -70,9 +74,10 @@ class NewsFetcher {
     // 如果没有选择新闻源或搜索失败，使用通用搜索
     try {
       const results = await this.tavilySearch('中国汽车新闻 最新 2026');
-      if (results.length > 0) {
-        this.newsData = results;
-        return results;
+      const limitedResults = results.slice(0, 5);
+      if (limitedResults.length > 0) {
+        this.newsData = limitedResults;
+        return limitedResults;
       }
     } catch (e) {
       console.log('Tavily搜索失败:', e);
