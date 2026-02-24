@@ -50,14 +50,14 @@ class NewsFetcher {
     const dateFilter = this.getDateFilter(timeRange);
 
     // 获取选中来源的搜索关键词
-    const sourceKeywords = this.getSourceKeywords();
+    const sourceKeywords = this.getSourceKeywords(timeRange);
 
     const allNews = [];
 
     try {
       // 搜索每个选中来源
       for (const query of sourceKeywords) {
-        const results = await this.tavilySearch(`${dateFilter} ${query}`);
+        const results = await this.tavilySearch(query);
         allNews.push(...results);
       }
 
@@ -92,13 +92,14 @@ class NewsFetcher {
   }
 
   // 获取选中来源的搜索关键词
-  getSourceKeywords() {
+  getSourceKeywords(timeRange) {
     const selected = this.getSelectedSources();
+    const dateFilter = this.getDateFilter(timeRange);
     const keywords = {
-      'all': '中国汽车新闻 新车上市 -视频 -评测',
-      'autohome': 'site:autohome.com.cn/news 新车 上市',
-      'dongche': 'site:dongchedi.com 新车 上市',
-      'yiche': 'site:yiche.com 新车 上市'
+      'all': `${dateFilter} 中国汽车新闻 新车上市 -视频`,
+      'autohome': `${dateFilter} site:autohome.com.cn/news 新车 上市`,
+      'dongche': `${dateFilter} site:dongchedi.com 新车 上市`,
+      'yiche': `${dateFilter} site:yiche.com 新车 上市`
     };
     return selected.map(s => keywords[s]).filter(k => k);
   }
