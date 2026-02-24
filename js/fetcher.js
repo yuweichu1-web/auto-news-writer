@@ -64,12 +64,13 @@ class NewsFetcher {
       // 过滤高质量新闻（只保留新车、政策、行业相关）
       const filteredNews = this.filterQualityNews(allNews);
 
-      // 按日期范围过滤
-      let dateFilteredNews = this.filterByDateRange(filteredNews, timeRange);
+      // 微博搜索是实时的，直接使用所有结果
+      // 不再做严格的日期过滤，避免过滤掉有效新闻
+      let dateFilteredNews = filteredNews;
 
-      // 如果日期过滤后没有结果，放宽条件
+      // 如果过滤后有结果就使用，否则放宽条件
       if (dateFilteredNews.length === 0) {
-        dateFilteredNews = filteredNews;
+        dateFilteredNews = allNews;
       }
 
       // 排除之前已显示的新闻
@@ -101,9 +102,10 @@ class NewsFetcher {
   getSourceKeywords(timeRange) {
     const selected = this.getSelectedSources();
 
-    // 直接搜索微博汽车热榜
+    // 微博汽车热榜搜索
     const keywords = {
-      'all': '微博 汽车热榜 新车',
+      'weibo': 'site:weibo.com 汽车热榜 新车 上市',
+      'all': 'site:weibo.com 汽车热榜 新车',
       'autohome': 'site:weibo.com 汽车 新车 上市',
       'dongche': 'site:weibo.com 汽车 新车 政策',
       'yiche': 'site:weibo.com 车企 行业'

@@ -3,6 +3,13 @@
 // 预设新闻源
 const NEWS_SOURCES = [
   {
+    id: 'weibo',
+    name: '微博汽车',
+    url: 'https://weibo.com',
+    icon: '📱',
+    category: '微博热榜'
+  },
+  {
     id: 'all',
     name: '全网',
     url: 'https://www.baidu.com',
