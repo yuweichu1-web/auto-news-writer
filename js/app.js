@@ -14,6 +14,10 @@ class App {
     this.bindEvents();
     this.renderHistory();
     this.loadSettings();
+    // 默认选中所有新闻源
+    const allSources = newsFetcher.initSources(this.customSources);
+    allSources.forEach(source => newsFetcher.toggleSource(source.id));
+    this.renderSourceList();
   }
 
   // 加载自定义新闻源
