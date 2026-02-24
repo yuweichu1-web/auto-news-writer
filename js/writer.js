@@ -1,7 +1,4 @@
-// writer.js - AI改写模块
-
-// 后端API地址
-const API_BASE = '';
+// writer.js - AI改写模块（纯前端版）
 
 class NewsWriter {
   constructor() {
@@ -20,43 +17,14 @@ class NewsWriter {
     // 显示加载状态
     this.showLoading('AI正在改写中...');
 
-    try {
-      // 调用后端API
-      const response = await fetch(`${API_BASE}/api/rewrite`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          content: news.summary || news.title,
-          format: format,
-          style: style
-        })
-      });
+    // 模拟AI处理时间
+    await this.delay(1500);
 
-      if (!response.ok) {
-        throw new Error('API请求失败');
-      }
-
-      const result = await response.json();
-
-      if (!result.success) {
-        throw new Error(result.error || '改写失败');
-      }
-
-      this.currentResult = result.data;
-      this.hideLoading();
-      return result.data;
-
-    } catch (error) {
-      console.error('改写失败:', error);
-      // 如果后端调用失败，使用模拟
-      await this.delay(1000);
-      const content = this.generateContent(news, format, style);
-      this.currentResult = content;
-      this.hideLoading();
-      return content;
-    }
+    // 直接使用本地生成
+    const content = this.generateContent(news, format, style);
+    this.currentResult = content;
+    this.hideLoading();
+    return content;
   }
 
   // 生成内容

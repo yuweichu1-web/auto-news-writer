@@ -1,7 +1,4 @@
-// fetcher.js - 新闻抓取模块
-
-// 后端API地址
-const API_BASE = '';
+// fetcher.js - 新闻抓取模块（纯前端版）
 
 class NewsFetcher {
   constructor() {
@@ -35,41 +32,63 @@ class NewsFetcher {
     this.selectedSources = new Set(sourceIds);
   }
 
-  // 获取新闻 - 调用后端API
+  // 获取新闻 - 使用搜索API
   async fetchNews(timeRange = 1) {
     if (this.selectedSources.size === 0) {
       throw new Error('请至少选择一个新闻源');
     }
 
     const selectedSources = this.getSelectedSources();
+    const allNews = [];
 
-    try {
-      // 调用后端API
-      const url = `${API_BASE}/api/news?sources=${selectedSources.join(',')}&hours=${timeRange * 24}`;
-      const response = await fetch(url);
+    // 搜索关键词
+    const keywords = ['汽车新闻', '新车上市', '新能源车', '车型发布'];
 
-      if (!response.ok) {
-        throw new Error('网络请求失败');
+    for (const keyword of keywords) {
+      try {
+        // 使用 DuckDuckGo 免费搜索 API
+        const url = `https://api.duckduckgo.com/?q=${encodeURIComponent(keyword)}&format=json&no_html=1&skip_disambig=1`;
+        const response = await fetch(url);
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.RelatedTopics) {
+            data.RelatedTopics.forEach((topic, idx) => {
+              if (topic.Text && topic.Text.length > 20) {
+                allNews.push({
+                  id: `search_${Date.now()}_${idx}`,
+                  title: topic.Text.split(' - ')[0] || topic.Text.substring(0, 50),
+                  summary: topic.Text.substring(0, 100),
+                  source: 'duckduckgo',
+                  source_name: '搜索结果',
+                  url: topic.FirstURL || '#',
+                  publishTime: new Date(Date.now() - Math.random() * timeRange * 24 * 60 * 60 * 1000).toISOString()
+                });
+              }
+            });
+          }
+        }
+      } catch (e) {
+        console.log('搜索API失败，使用模拟数据');
       }
+    }
 
-      const result = await response.json();
-
-      if (!result.success) {
-        throw new Error(result.error || '获取新闻失败');
-      }
-
-      this.newsData = result.data;
-      return result.data;
-
-    } catch (error) {
-      console.error('获取新闻失败:', error);
-      // 如果后端调用失败，使用模拟数据
+    // 如果没有获取到搜索结果，使用模拟数据
+    if (allNews.length === 0) {
       console.log('使用模拟数据...');
       const mockNews = this.generateMockNews(selectedSources, timeRange);
       mockNews.sort((a, b) => new Date(b.publishTime) - new Date(a.publishTime));
       this.newsData = mockNews;
       return mockNews;
     }
+
+    // 去重并返回
+    const uniqueNews = allNews.filter((news, index, self) =>
+      index === self.findIndex((n) => n.title === news.title)
+    ).slice(0, 20);
+
+    this.newsData = uniqueNews;
+    return uniqueNews;
   }
 
   // 生成模拟新闻数据（备用）
