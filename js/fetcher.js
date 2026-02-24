@@ -42,41 +42,16 @@ class NewsFetcher {
     // 根据日期范围设置搜索关键词
     const dateFilter = this.getDateFilter(timeRange);
 
-    // 搜索垂直媒体官方频道 + 排除自媒体
-    const searchKeywords = [
-      // 汽车之家官方
-      `${dateFilter} site:autohome.com.cn 上市 官方`,
-      `${dateFilter} site:autohome.com.cn 新车发布`,
-      // 懂车帝官方
-      `${dateFilter} site:dongche.com 上市 官方`,
-      `${dateFilter} site:dongche.com 新车发布`,
-      // 易车官方
-      `${dateFilter} site:yiche.com 上市 官方`,
-      `${dateFilter} site:yiche.com 新车发布`,
-      // 新浪汽车
-      `${dateFilter} site:auto.sina.com.cn 上市`,
-      // 太平洋汽车
-      `${dateFilter} site:pcauto.com.cn 上市 新车`,
-      // 行业重磅
-      `${dateFilter} 汽车行业 重大发布 官方`
-    ];
-
-    const allNews = [];
+    // 搜索汽车之家 + 懂车帝的新车/重磅新闻
+    const searchQuery = `${dateFilter} 新车 重磅汽车新闻 site:autohome.com.cn OR site:dongchedi.com`;
 
     try {
-      // 并行搜索所有关键词
-      const searchPromises = searchKeywords.map(keyword => this.tavilySearch(keyword));
-      const results = await Promise.all(searchPromises);
+      const results = await this.tavilySearch(searchQuery);
 
-      // 合并所有结果
-      results.forEach(items => {
-        allNews.push(...items);
-      });
+      // 过滤噪音
+      const filteredNews = this.filterQualityNews(results);
 
-      // 过滤噪音，保留垂直媒体官方新闻
-      const filteredNews = this.filterQualityNews(allNews);
-
-      // 去重（根据URL）
+      // 去重
       const uniqueNews = this.deduplicateNews(filteredNews);
 
       // 取5条
@@ -102,8 +77,8 @@ class NewsFetcher {
   getDateFilter(timeRange) {
     const days = {
       1: '今天',
-      3: '近3天',
-      7: '近7天'
+      3: '近3天内',
+      7: '近7天内'
     };
     return days[timeRange] || '今天';
   }
@@ -114,18 +89,17 @@ class NewsFetcher {
     const excludeKeywords = [
       '视频', '评测', '谍照', '预告', '概念车', '渲染图', '假想图',
       '自媒体', '博主', '网红', '个人观点', '试驾', '到店', '实拍',
-      '猜想', '预测', '展望', '展望', '展望', '传言'
+      '猜想', '预测', '传言', '话题', '互动'
     ];
     // 优先保留的关键词
     const includeKeywords = [
       '正式上市', '官方发布', '正式发布', '上市', '售价', '配置',
-      '价格', '上市', '发布', '上市', '官宣', '正式上市', '正式开售'
+      '价格', '发布', '官宣', '正式开售', '新车', '重磅'
     ];
     // 垂直媒体域名
     const trustedDomains = [
-      'autohome.com.cn', 'dongche.com', 'yiche.com',
-      'auto.sina.com.cn', 'pcauto.com.cn', 'qq.com/auto',
-      'sohu.com/car', '163.com/dy', 'ifeng.com/auto'
+      'autohome.com.cn', 'dongchedi.com', 'dongche.com',
+      'yiche.com', 'auto.sina.com.cn', 'pcauto.com.cn'
     ];
 
     return news.filter(item => {
@@ -146,7 +120,7 @@ class NewsFetcher {
       const hasPriority = includeKeywords.some(kw => content.includes(kw));
 
       // 来自可信域名且有关键词，或者内容较长
-      return (isFromTrusted && hasPriority) || (hasPriority && content.length > 80);
+      return (isFromTrusted && hasPriority) || (hasPriority && content.length > 50);
     });
   }
 
