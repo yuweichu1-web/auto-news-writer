@@ -42,13 +42,9 @@ class App {
     // 绑定点击事件
     container.querySelectorAll('.source-item').forEach(item => {
       item.addEventListener('click', (e) => {
-        // 点击label或span时触发
-        if (e.target.type !== 'checkbox') {
-          const checkbox = item.querySelector('input[type="checkbox"]');
-          checkbox.checked = !checkbox.checked;
-        }
-        // 无论点击什么，都触发变更
         const checkbox = item.querySelector('input[type="checkbox"]');
+        // 直接切换状态
+        checkbox.checked = !checkbox.checked;
         this.onSourceChange(checkbox.value, checkbox.checked);
       });
     });
@@ -61,11 +57,17 @@ class App {
 
   // 新闻源变更
   onSourceChange(sourceId, checked) {
+    // 直接设置选中状态
+    const current = newsFetcher.getSelectedSources();
     if (checked) {
-      newsFetcher.toggleSource(sourceId);
+      if (!current.includes(sourceId)) {
+        current.push(sourceId);
+      }
     } else {
-      newsFetcher.toggleSource(sourceId);
+      const idx = current.indexOf(sourceId);
+      if (idx > -1) current.splice(idx, 1);
     }
+    newsFetcher.setSelectedSources(current);
     this.renderSourceList();
   }
 
