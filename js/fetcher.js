@@ -57,41 +57,23 @@ class NewsFetcher {
     try {
       // 搜索每个选中来源
       for (const query of sourceKeywords) {
-        console.log(`[搜索] ${query}`);
         const results = await this.tavilySearch(query);
-        console.log(`[搜索] 获得 ${results.length} 条结果`);
         allNews.push(...results);
       }
 
-      console.log(`[总计] 搜索获得 ${allNews.length} 条新闻`);
-
-      // 过滤噪音
+      // 过滤高质量新闻（只保留新车、政策、行业相关）
       const filteredNews = this.filterQualityNews(allNews);
-      console.log(`[过滤] 质量过滤后 ${filteredNews.length} 条`);
 
-      // 严格按日期过滤 - 只保留指定时间范围内的新闻
+      // 按日期范围过滤
       let dateFilteredNews = this.filterByDateRange(filteredNews, timeRange);
-      console.log(`[过滤] 日期过滤后 ${dateFilteredNews.length} 条`);
 
-      // 如果日期过滤后没有结果，放宽到7天
-      if (dateFilteredNews.length === 0 && timeRange === 1) {
-        console.log('[降级] 当天无结果，放宽到3天...');
-        dateFilteredNews = this.filterByDateRange(filteredNews, 3);
-      }
+      // 如果日期过滤后没有结果，放宽条件
       if (dateFilteredNews.length === 0) {
-        console.log('[降级] 放宽到7天...');
-        dateFilteredNews = this.filterByDateRange(filteredNews, 7);
-      }
-      // 如果7天也没有，就使用所有通过质量过滤的新闻
-      if (dateFilteredNews.length === 0) {
-        console.log('[降级] 使用所有新闻...');
         dateFilteredNews = filteredNews;
       }
-      console.log(`[最终] ${dateFilteredNews.length} 条新闻`);
 
       // 排除之前已显示的新闻
       const newNews = this.excludeOldNews(dateFilteredNews);
-      console.log(`[过滤] 排除历史后 ${newNews.length} 条`);
 
       // 随机打乱顺序
       const shuffledNews = newNews.sort(() => 0.5 - Math.random());
@@ -100,24 +82,15 @@ class NewsFetcher {
       const limitedNews = shuffledNews.slice(0, 5);
 
       if (limitedNews.length > 0) {
-        // 保存已显示的新闻ID
         this.addToHistory(limitedNews);
         this.newsData = limitedNews;
         return limitedNews;
-      } else {
-        console.log('[警告] 所有新闻都被过滤掉了，尝试不排除历史...');
-        // 如果排除历史后没结果，尝试不排除历史
-        const allResults = dateFilteredNews.sort(() => 0.5 - Math.random()).slice(0, 5);
-        this.addToHistory(allResults);
-        this.newsData = allResults;
-        return this.newsData;
       }
     } catch (e) {
       console.log('Tavily搜索失败:', e);
     }
 
-    // 如果Tavily失败，使用模拟数据
-    console.log('使用模拟数据...');
+    // 使用模拟数据
     const mockNews = this.generateMockNews(['autohome', 'dongche'], timeRange);
     mockNews.sort((a, b) => new Date(b.publishTime) - new Date(a.publishTime));
     this.newsData = mockNews.slice(0, 5);
@@ -127,23 +100,13 @@ class NewsFetcher {
   // 获取选中来源的搜索关键词
   getSourceKeywords(timeRange) {
     const selected = this.getSelectedSources();
-    const dateFilter = this.getDateFilter(timeRange);
 
-    // 根据时间范围添加不同的关键词
-    let timeKeywords = '';
-    if (timeRange === 1) {
-      timeKeywords = '今日 今天 最新';
-    } else if (timeRange === 3) {
-      timeKeywords = '近日 最新 最近';
-    } else {
-      timeKeywords = '最新 最近';
-    }
-
+    // 直接搜索微博汽车热榜
     const keywords = {
-      'all': `${dateFilter} ${timeKeywords} 中国汽车新闻 新车上市 上市 -视频`,
-      'autohome': `${dateFilter} ${timeKeywords} site:autohome.com.cn/news 新车 上市`,
-      'dongche': `${dateFilter} ${timeKeywords} site:dongchedi.com 新车 上市`,
-      'yiche': `${dateFilter} ${timeKeywords} site:yiche.com 新车 上市`
+      'all': '微博 汽车热榜 新车',
+      'autohome': 'site:weibo.com 汽车 新车 上市',
+      'dongche': 'site:weibo.com 汽车 新车 政策',
+      'yiche': 'site:weibo.com 车企 行业'
     };
     return selected.map(s => keywords[s]).filter(k => k);
   }
@@ -203,10 +166,24 @@ class NewsFetcher {
     return `after:${today}`;
   }
 
-  // 过滤高质量新闻 - 排除视频，保留图文
+  // 过滤高质量新闻 - 只保留新车、政策、行业新闻
   filterQualityNews(news) {
-    // 只排除明显的非图文内容
-    const excludeKeywords = ['视频', '视频教程', '短视频'];
+    // 必须包含的关键词（新车、政策、行业相关）
+    const includeKeywords = [
+      '新车', '上市', '发布', '预售', '亮相', '首发',
+      '政策', '补贴', '法规', '标准', '规划',
+      '行业', '销量', '交付', '财报', '投资', '合作',
+      '新能源', '电动车', '智驾', '电池', '续航',
+      '比亚迪', '特斯拉', '小米', '华为', '吉利', '长城', '长安', '奇瑞',
+      '问界', '理想', '蔚来', '小鹏', '零跑', '哪吒', '极氪', '领克'
+    ];
+
+    // 排除的关键词（不相关或低质量内容）
+    const excludeKeywords = [
+      '视频', '短视频', '直播', '带货', '评测', '试驾',
+      '车祸', '事故', '维权', '投诉', '召回',
+      '二手车', '降价', '优惠'
+    ];
 
     return news.filter(item => {
       const title = (item.title || '').toLowerCase();
@@ -214,13 +191,14 @@ class NewsFetcher {
       const url = (item.url || '').toLowerCase();
       const content = title + summary + url;
 
-      // 排除视频
+      // 首先排除视频相关内容
       for (const kw of excludeKeywords) {
         if (content.includes(kw)) return false;
       }
 
-      // 基本保留所有内容
-      return true;
+      // 必须包含至少一个相关关键词
+      const hasKeyword = includeKeywords.some(kw => content.includes(kw));
+      return hasKeyword;
     });
   }
 
@@ -247,9 +225,7 @@ class NewsFetcher {
       if (item.publishTime) {
         const pubDate = new Date(item.publishTime);
         if (!isNaN(pubDate.getTime())) {
-          const isValid = pubDate >= minDate;
-          console.log(`[日期过滤] ${item.title?.substring(0, 20)}... publishTime=${item.publishTime}, minDate=${minDate.toISOString()}, 通过=${isValid}`);
-          return isValid;
+          return pubDate >= minDate;
         }
       }
       // 尝试从标题或摘要中提取日期
@@ -368,12 +344,6 @@ class NewsFetcher {
       const data = await response.json();
 
       if (data.results) {
-        // 调试：打印第一个结果的字段
-        if (data.results.length > 0) {
-          console.log('[Tavily返回字段]', Object.keys(data.results[0]));
-          console.log('[Tavily原始数据]', JSON.stringify(data.results[0]).substring(0, 500));
-        }
-
         return data.results.map((result, idx) => ({
           id: `tavily_${Date.now()}_${idx}`,
           title: result.title || result.url,
@@ -381,7 +351,7 @@ class NewsFetcher {
           source: 'tavily',
           source_name: 'Tavily搜索',
           url: result.url || '#',
-          // 优先使用Tavily返回的发布日期，否则使用当前时间附近
+          // 使用Tavily返回的发布日期
           publishTime: result.published_date
             ? new Date(result.published_date).toISOString()
             : (result.published_on
