@@ -57,18 +57,25 @@ class NewsFetcher {
     try {
       // 搜索每个选中来源
       for (const query of sourceKeywords) {
+        console.log(`[搜索] ${query}`);
         const results = await this.tavilySearch(query);
+        console.log(`[搜索] 获得 ${results.length} 条结果`);
         allNews.push(...results);
       }
 
+      console.log(`[总计] 搜索获得 ${allNews.length} 条新闻`);
+
       // 过滤噪音
       const filteredNews = this.filterQualityNews(allNews);
+      console.log(`[过滤] 质量过滤后 ${filteredNews.length} 条`);
 
       // 严格按日期过滤 - 只保留指定时间范围内的新闻
       const dateFilteredNews = this.filterByDateRange(filteredNews, timeRange);
+      console.log(`[过滤] 日期过滤后 ${dateFilteredNews.length} 条`);
 
       // 排除之前已显示的新闻
       const newNews = this.excludeOldNews(dateFilteredNews);
+      console.log(`[过滤] 排除历史后 ${newNews.length} 条`);
 
       // 随机打乱顺序
       const shuffledNews = newNews.sort(() => 0.5 - Math.random());
@@ -81,6 +88,8 @@ class NewsFetcher {
         this.addToHistory(limitedNews);
         this.newsData = limitedNews;
         return limitedNews;
+      } else {
+        console.log('[警告] 所有新闻都被过滤掉了！');
       }
     } catch (e) {
       console.log('Tavily搜索失败:', e);
@@ -217,7 +226,9 @@ class NewsFetcher {
       if (item.publishTime) {
         const pubDate = new Date(item.publishTime);
         if (!isNaN(pubDate.getTime())) {
-          return pubDate >= minDate;
+          const isValid = pubDate >= minDate;
+          console.log(`[日期过滤] ${item.title?.substring(0, 20)}... publishTime=${item.publishTime}, minDate=${minDate.toISOString()}, 通过=${isValid}`);
+          return isValid;
         }
       }
       // 尝试从标题或摘要中提取日期
@@ -336,6 +347,12 @@ class NewsFetcher {
       const data = await response.json();
 
       if (data.results) {
+        // 调试：打印第一个结果的字段
+        if (data.results.length > 0) {
+          console.log('[Tavily返回字段]', Object.keys(data.results[0]));
+          console.log('[Tavily原始数据]', JSON.stringify(data.results[0]).substring(0, 500));
+        }
+
         return data.results.map((result, idx) => ({
           id: `tavily_${Date.now()}_${idx}`,
           title: result.title || result.url,
