@@ -39,25 +39,45 @@ class NewsFetcher {
   async fetchNews(timeRange = 1) {
     // timeRange: 1=当天, 3=3天内, 7=7天内
 
+    const selectedSources = this.getSelectedSources();
+
+    // 如果没有选择任何新闻源，随机选择1-2个
+    if (selectedSources.length === 0) {
+      const allSources = ['autohome', 'dongche', 'yiche'];
+      const randomSources = allSources.sort(() => 0.5 - Math.random()).slice(0, 2);
+      this.selectedSources = new Set(randomSources);
+    }
+
     // 根据日期范围设置搜索关键词
     const dateFilter = this.getDateFilter(timeRange);
 
-    // 搜索全网新车/重磅新闻，排除视频
-    const searchQuery = `${dateFilter} 新车 重磅汽车新闻 -视频 -评测`;
+    // 获取选中来源的搜索关键词
+    const sourceKeywords = this.getSourceKeywords();
+
+    const allNews = [];
 
     try {
-      const results = await this.tavilySearch(searchQuery);
+      // 搜索每个选中来源
+      for (const query of sourceKeywords) {
+        const results = await this.tavilySearch(`${dateFilter} ${query}`);
+        allNews.push(...results);
+      }
 
       // 过滤噪音
-      const filteredNews = this.filterQualityNews(results);
+      const filteredNews = this.filterQualityNews(allNews);
 
-      // 去重
-      const uniqueNews = this.deduplicateNews(filteredNews);
+      // 排除之前已显示的新闻
+      const newNews = this.excludeOldNews(filteredNews);
+
+      // 随机打乱顺序
+      const shuffledNews = newNews.sort(() => 0.5 - Math.random());
 
       // 取5条
-      const limitedNews = uniqueNews.slice(0, 5);
+      const limitedNews = shuffledNews.slice(0, 5);
 
       if (limitedNews.length > 0) {
+        // 保存已显示的新闻ID
+        this.addToHistory(limitedNews);
         this.newsData = limitedNews;
         return limitedNews;
       }
@@ -71,6 +91,46 @@ class NewsFetcher {
     mockNews.sort((a, b) => new Date(b.publishTime) - new Date(a.publishTime));
     this.newsData = mockNews.slice(0, 5);
     return this.newsData;
+  }
+
+  // 获取选中来源的搜索关键词
+  getSourceKeywords() {
+    const selected = this.getSelectedSources();
+    const keywords = {
+      'autohome': '汽车之家 新车 上市',
+      'dongche': '懂车帝 新车 上市',
+      'yiche': '易车 新车 上市'
+    };
+    return selected.map(s => keywords[s]).filter(k => k);
+  }
+
+  // 排除之前显示过的新闻
+  excludeOldNews(news) {
+    const history = this.getHistory();
+    return news.filter(item => !history.has(item.url));
+  }
+
+  // 获取历史记录
+  getHistory() {
+    const key = 'news_history';
+    try {
+      const data = localStorage.getItem(key);
+      return new Set(data ? JSON.parse(data) : []);
+    } catch {
+      return new Set();
+    }
+  }
+
+  // 添加到历史记录
+  addToHistory(news) {
+    const key = 'news_history';
+    const history = this.getHistory();
+    news.forEach(item => {
+      if (item.url) history.add(item.url);
+    });
+    // 只保留最近100条
+    const arr = Array.from(history).slice(-100);
+    localStorage.setItem(key, JSON.stringify(arr));
   }
 
   // 获取日期过滤字符串

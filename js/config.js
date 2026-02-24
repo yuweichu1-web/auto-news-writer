@@ -22,20 +22,6 @@ const NEWS_SOURCES = [
     url: 'https://www.yiche.com',
     icon: '🚙',
     category: '汽车垂直平台'
-  },
-  {
-    id: 'newcar',
-    name: '新车发布',
-    url: 'https://www.autohome.com.cn',
-    icon: '🆕',
-    category: '新车资讯'
-  },
-  {
-    id: 'bignews',
-    name: '行业重磅',
-    url: 'https://www.dongche.com',
-    icon: '💥',
-    category: '行业新闻'
   }
 ];
 

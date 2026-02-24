@@ -14,9 +14,9 @@ class App {
     this.bindEvents();
     this.renderHistory();
     this.loadSettings();
-    // 默认选中所有新闻源
+    // 默认不选中任何新闻源
     const allSources = newsFetcher.initSources(this.customSources);
-    newsFetcher.setSelectedSources(['autohome', 'dongche', 'yiche', 'newcar', 'bignews']);
+    newsFetcher.setSelectedSources([]);
     this.renderSourceList();
   }
 
