@@ -7,7 +7,7 @@ class NewsWriter {
     this.currentStyle = 'vlog';
     this.currentFormat = 'short';
     // 后端API地址
-    this.apiBase = '';
+    this.apiBase = 'https://auto-news-writer-1.onrender.com';
   }
 
   // 改写新闻

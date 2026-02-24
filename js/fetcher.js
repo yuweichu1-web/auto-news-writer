@@ -4,8 +4,8 @@ class NewsFetcher {
   constructor() {
     this.selectedSources = new Set();
     this.newsData = [];
-    // 后端API地址 - 部署后修改为实际地址
-    this.apiBase = ''; // 空字符串表示同源，会自动使用当前域名
+    // 后端API地址
+    this.apiBase = 'https://auto-news-writer-1.onrender.com';
   }
 
   // 初始化新闻源
