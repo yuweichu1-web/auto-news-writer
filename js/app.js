@@ -42,11 +42,14 @@ class App {
     // 绑定点击事件
     container.querySelectorAll('.source-item').forEach(item => {
       item.addEventListener('click', (e) => {
+        // 点击label或span时触发
         if (e.target.type !== 'checkbox') {
           const checkbox = item.querySelector('input[type="checkbox"]');
           checkbox.checked = !checkbox.checked;
-          this.onSourceChange(checkbox.value, checkbox.checked);
         }
+        // 无论点击什么，都触发变更
+        const checkbox = item.querySelector('input[type="checkbox"]');
+        this.onSourceChange(checkbox.value, checkbox.checked);
       });
     });
   }
