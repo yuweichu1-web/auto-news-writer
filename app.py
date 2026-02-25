@@ -7,22 +7,34 @@ import json
 import random
 from datetime import datetime
 
-app = Flask(__name__, static_folder='.', static_url_path='')
+import os
+from flask import send_from_directory
+
+# 获取当前目录
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+app = Flask(__name__)
 CORS(app)
 
 # 确保根路径返回 index.html
 @app.route('/')
 def index():
-    return app.send_static_file('index.html')
+    return send_from_directory(BASE_DIR, 'index.html')
 
-# 提供静态文件
+# 提供 js 目录下的静态文件
 @app.route('/js/<path:filename>')
 def serve_js(filename):
-    return app.send_static_file(f'js/{filename}')
+    return send_from_directory(os.path.join(BASE_DIR, 'js'), filename)
 
+# 提供 css 目录下的静态文件
 @app.route('/css/<path:filename>')
 def serve_css(filename):
-    return app.send_static_file(f'css/{filename}')
+    return send_from_directory(os.path.join(BASE_DIR, 'css'), filename)
+
+# 提供 assets 目录下的静态文件
+@app.route('/assets/<path:filename>')
+def serve_assets(filename):
+    return send_from_directory(os.path.join(BASE_DIR, 'assets'), filename)
 
 # 导入配置
 from config import (
