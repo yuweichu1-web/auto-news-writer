@@ -223,19 +223,12 @@ def generate_mock_news():
 
 @app.route('/')
 def index():
-    return jsonify({
-        'name': '汽车新闻快编 API',
-        'version': '4.0',
-        'provider': '火山引擎',
-        'models': {
-            'search': VOLCENGINE_MODEL_SEARCH,
-            'deep': VOLCENGINE_MODEL_DEEP
-        },
-        'endpoints': {
-            '/api/news': 'AI搜索新闻',
-            '/api/rewrite': 'AI改写'
-        }
-    })
+    # 返回前端页面
+    import os
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    index_path = os.path.join(base_dir, 'index.html')
+    with open(index_path, 'r', encoding='utf-8') as f:
+        return f.read(), 200, {'Content-Type': 'text/html'}
 
 
 @app.route('/api/news')
