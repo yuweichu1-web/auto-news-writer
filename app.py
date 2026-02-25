@@ -7,8 +7,22 @@ import json
 import random
 from datetime import datetime
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder='.', static_url_path='')
 CORS(app)
+
+# 确保根路径返回 index.html
+@app.route('/')
+def index():
+    return app.send_static_file('index.html')
+
+# 提供静态文件
+@app.route('/js/<path:filename>')
+def serve_js(filename):
+    return app.send_static_file(f'js/{filename}')
+
+@app.route('/css/<path:filename>')
+def serve_css(filename):
+    return app.send_static_file(f'css/{filename}')
 
 # 导入配置
 from config import (
@@ -219,15 +233,6 @@ def generate_mock_news():
         })
 
     return news
-
-
-@app.route('/')
-def index():
-    # 返回前端页面
-    base_dir = os.path.dirname(os.path.abspath(__file__))
-    index_path = os.path.join(base_dir, 'index.html')
-    with open(index_path, 'r', encoding='utf-8') as f:
-        return f.read(), 200, {'Content-Type': 'text/html'}
 
 
 @app.route('/api/news')
